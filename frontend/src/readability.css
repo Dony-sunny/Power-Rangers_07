@@ -1,0 +1,277 @@
+/* Keep dense operational metadata readable at normal browser zoom. */
+.sidebar {
+  transition: none;
+}
+.eyebrow,
+.panel-head .eyebrow {
+  font-size: 9px;
+}
+.workspace-label {
+  font-size: 10px;
+}
+.stat-label {
+  font-size: 11px;
+  color: #667e70;
+}
+.stat small {
+  font-size: 10px;
+}
+.page-heading p {
+  font-size: 13px;
+  color: #687e70;
+}
+.panel-head h2 {
+  font-size: 18px;
+}
+.field {
+  font-size: 12px;
+  color: #617868;
+}
+.cargo-selector select {
+  font-size: 12px;
+}
+.cargo-detail p {
+  font-size: 11px;
+  color: #6e836f;
+}
+.origin-destination small {
+  font-size: 9px;
+}
+.origin-destination strong {
+  font-size: 14px;
+}
+.shipment-meta span {
+  font-size: 10px;
+}
+.shipment-meta strong {
+  font-size: 11px;
+}
+.validation-note {
+  font-size: 11px;
+}
+.validation-note small {
+  font-size: 10px;
+}
+.subtle {
+  font-size: 11px;
+}
+.badge {
+  font-size: 10px;
+}
+.mode-head small {
+  font-size: 10px;
+}
+.mode-cost small {
+  font-size: 10px;
+}
+.mode-measures small {
+  font-size: 10px;
+}
+.mode-eta {
+  font-size: 10px;
+}
+.mode-eta strong {
+  font-size: 11px;
+}
+.recommended-tag {
+  font-size: 9px;
+}
+.cost-details {
+  font-size: 11px;
+}
+.mode-card .button {
+  font-size: 11px;
+}
+.recommendation-note strong {
+  font-size: 12px;
+}
+.recommendation-note p {
+  font-size: 11px;
+  color: #687f60;
+}
+.match-row strong {
+  font-size: 13px;
+}
+.match-row small {
+  font-size: 10px;
+}
+.match-row details {
+  font-size: 11px;
+}
+.match-score small {
+  font-size: 9px;
+}
+.check-item {
+  font-size: 11px;
+}
+.rejected-match summary {
+  font-size: 11px;
+}
+.rejected-match summary > span:not(.badge) {
+  font-size: 10px;
+}
+.opportunity h3 {
+  font-size: 13px;
+}
+.opportunity p {
+  font-size: 11px;
+  color: #758967;
+}
+.pool-result span {
+  font-size: 11px;
+}
+.pool-result small {
+  font-size: 10px;
+}
+.backhaul-result p {
+  font-size: 12px;
+}
+.provenance-mini {
+  font-size: 10px;
+  color: #728767;
+}
+.role-intro {
+  font-size: 12px;
+}
+.table-scroll th {
+  font-size: 10px;
+}
+.table-scroll td {
+  font-size: 12px;
+}
+.table-scroll td small {
+  font-size: 10px;
+}
+.shipment-card p {
+  font-size: 12px;
+}
+.shipment-card h3 {
+  font-size: 14px;
+}
+.timeline-item {
+  font-size: 12px;
+}
+.demo-card p {
+  font-size: 12px;
+}
+.map-label small {
+  font-size: 8px;
+}
+.map-note {
+  font-size: 9px;
+}
+.map-footer {
+  font-size: 10px;
+}
+.map-controls button,
+.map-chip {
+  font-size: 10px;
+}
+.topbar .breadcrumb {
+  font-size: 12px;
+}
+.role-select select {
+  font-size: 12px;
+}
+.brand small {
+  font-size: 8px;
+}
+.identity strong {
+  font-size: 11px;
+}
+.identity small {
+  font-size: 10px;
+}
+.sidebar nav button {
+  font-size: 12px;
+}
+.sidebar-link {
+  font-size: 12px;
+}
+.corridor-card p {
+  font-size: 12px;
+}
+.loading,
+.empty {
+  font-size: 13px;
+}
+.form-grid input,
+.form-grid select {
+  font-size: 13px;
+}
+.checkbox {
+  font-size: 12px;
+}
+.confidence {
+  font-size: 10px;
+}
+.detail-grid label {
+  font-size: 11px;
+}
+.detail-grid strong {
+  font-size: 13px;
+}
+footer {
+  font-size: 10px;
+}
+.map-footer span {
+  min-width: 0;
+}
+.field select {
+  max-width: 100%;
+}
+@media (max-width: 760px) {
+  .topbar .breadcrumb {
+    font-size: 10px;
+  }
+  .role-select select {
+    font-size: 10px;
+    max-width: 155px;
+  }
+  .panel-head h2 {
+    font-size: 16px;
+  }
+  .page-heading p {
+    font-size: 12px;
+  }
+  .map-footer {
+    font-size: 8px;
+  }
+  .map-note {
+    font-size: 7px;
+  }
+  .planner-grid .panel-head {
+    flex-wrap: wrap;
+  }
+  .mode-eta strong {
+    font-size: 10px;
+  }
+  .stat-label {
+    font-size: 10px;
+  }
+  .eyebrow,
+  .panel-head .eyebrow {
+    font-size: 8px;
+  }
+  .match-row {
+    flex-wrap: wrap;
+  }
+  .match-row > div {
+    min-width: 150px;
+  }
+  .opportunity p {
+    font-size: 10px;
+  }
+  .sidebar nav button {
+    font-size: 12px;
+  }
+  footer {
+    font-size: 9px;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .panel-head select {
+    max-width: 100%;
+  }
+}
