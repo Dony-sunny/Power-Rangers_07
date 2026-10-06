@@ -1,0 +1,3 @@
+cargo_type,weight_tonnes,volume_m3,packaging,origin,destination,ready_time,delivery_deadline,first_mile_required,last_mile_required,consolidation_allowed
+cement,80,60,bagged,Kalamassery,Alappuzha,2026-10-08T08:00:00+05:30,2026-10-08T22:00:00+05:30,True,False,True
+steel,58,48,bundled,Maradu,Alappuzha,2026-10-08T08:00:00+05:30,2026-10-08T22:00:00+05:30,False,False,True

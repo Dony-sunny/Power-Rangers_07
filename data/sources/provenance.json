@@ -1,0 +1,10 @@
+{
+  "reviewed_date": "2026-10-07",
+  "source_grounded_context": [
+    {"source_name": "IWAI NW-3 overview", "url": "https://www.iwai.gov.in/offerings/national-waterway/national-waterways3?page=0", "use": "Historic principal corridor context, tidal/lock context; not live operational values"},
+    {"source_name": "IWAI NW-3 terminal list", "url": "https://iwai.gov.in/offerings/national-waterway/national-waterways3?page=1", "use": "Terminal names only"}
+  ],
+  "operational_data": {"source_name": "Synthetic hackathon fixtures", "source_date": "2026-10-06", "verification_status": "SIMULATED", "last_verified": null},
+  "live_integrations": {"navigation": false, "gps": false, "government": false, "weather": false, "payments": false},
+  "notice": "No operational measurement is a verified navigation or legal-compliance source."
+}

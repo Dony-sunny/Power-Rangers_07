@@ -1,0 +1,224 @@
+{
+  "generated_at": "2026-10-07T00:22:26.785005+05:30",
+  "source": "Calculated application results using synthetic demo inputs, isolated database",
+  "feasible_vessels": [
+    "MV Vembanad",
+    "MV Pamba",
+    "MV Periyar"
+  ],
+  "rejected": [
+    {
+      "vessel": "MV Deep Blue",
+      "reasons": [
+        "segment-1: draft 2.3 m + 0.2 m safety margin exceeds demo depth 2.4 m.",
+        "segment-2: draft 2.3 m + 0.2 m safety margin exceeds demo depth 2.0 m.",
+        "segment-3: draft 2.3 m + 0.2 m safety margin exceeds demo depth 2.2 m."
+      ]
+    }
+  ],
+  "individual_modes": [
+    {
+      "mode": "ROAD",
+      "feasible": true,
+      "sla": true,
+      "total_cost": 50885.21,
+      "breakdown": {
+        "road_freight": 45285.21,
+        "handling": 5600.0
+      },
+      "emissions_kg": 699.26,
+      "eta": "2026-10-08T11:21:05.048919+05:30",
+      "departure": "2026-10-08T08:00:00+05:30",
+      "hours": 3.35,
+      "road_km": 83.24,
+      "water_km": 0,
+      "handoffs": 1,
+      "reliability": 0.9,
+      "reasons": []
+    },
+    {
+      "mode": "WATER",
+      "feasible": false,
+      "total_cost": null,
+      "reasons": [
+        "Direct water requires terminal-to-terminal cargo; first/last-mile trucking is included under HYBRID."
+      ]
+    },
+    {
+      "mode": "HYBRID",
+      "feasible": true,
+      "sla": true,
+      "vessel_id": "vembanad",
+      "availability_id": "availability-vembanad",
+      "origin_terminal_id": "terminal-maradu",
+      "destination_terminal_id": "terminal-alappuzha",
+      "origin_terminal": "Maradu cargo terminal",
+      "destination_terminal": "Alappuzha cargo terminal",
+      "departure": "2026-10-08T09:30:26.602528+05:30",
+      "loading_start": "2026-10-08T08:45:26.602528+05:30",
+      "unloading_start": "2026-10-08T16:09:26.602528+05:30",
+      "eta": "2026-10-08T16:54:26.602528+05:30",
+      "total_cost": 35391.34,
+      "breakdown": {
+        "first_mile_truck": 10391.34,
+        "origin_handling": 4400.0,
+        "storage_waiting": 120.0,
+        "water_freight": 15360.0,
+        "destination_handling": 5120.0,
+        "last_mile_truck": 0.0
+      },
+      "emissions_kg": 279.75,
+      "hours": 8.91,
+      "first_mile_km": 16.24,
+      "last_mile_km": 0,
+      "road_km": 16.24,
+      "water_km": 64.0,
+      "handoffs": 3,
+      "reliability": 0.96,
+      "route": {
+        "passed": true,
+        "distance_km": 64.0,
+        "segments": [
+          "segment-1",
+          "segment-2",
+          "segment-3"
+        ],
+        "nodes": [
+          "maradu",
+          "vaikom",
+          "thanneermukkom",
+          "alappuzha"
+        ],
+        "reasons": []
+      },
+      "lock_notices": [],
+      "available_capacity": 150.0,
+      "warnings": []
+    }
+  ],
+  "recommended_mode": "HYBRID",
+  "pool": {
+    "total_tonnes": 138.0,
+    "utilization_before_pct": 53.3,
+    "utilization_after_pct": 92.0,
+    "additional_revenue": 11136.0,
+    "solver": "OR-Tools CP-SAT",
+    "solver_status": "OPTIMAL"
+  },
+  "return_opportunities": [
+    {
+      "cargo_type": "coir",
+      "weight_tonnes": 62.0,
+      "revenue": 11904.0,
+      "departure": "2026-10-08T21:00:00+05:30",
+      "eta": "2026-10-09T11:00:00+05:30"
+    }
+  ],
+  "created_bookings": 2,
+  "booking_impact": {
+    "tonnes_shifted": 138.0,
+    "completed_tonnes_shifted": 0,
+    "cost_savings": 27857.4,
+    "co2_avoided_kg": 723.66,
+    "truck_trips_potentially_avoided": 7,
+    "utilization_before_pct": 53.3,
+    "utilization_after_pct": 92.0,
+    "backhaul_matches": 0,
+    "selected_bookings": 2,
+    "completed_bookings": 0,
+    "unserved_tonnes": 302.0,
+    "unserved_cargo": [
+      {
+        "cargo_type": "coir",
+        "weight_tonnes": 62.0,
+        "origin": "Alappuzha",
+        "destination": "Maradu",
+        "priority": "NORMAL"
+      },
+      {
+        "cargo_type": "general",
+        "weight_tonnes": 240.0,
+        "origin": "Vaikom",
+        "destination": "Alappuzha",
+        "priority": "NORMAL"
+      }
+    ],
+    "corridors": [
+      {
+        "corridor": "maradu → alappuzha",
+        "requested_tonnes": 138.0,
+        "booked_tonnes": 138.0,
+        "unserved_tonnes": 0,
+        "requests": 2
+      },
+      {
+        "corridor": "alappuzha → maradu",
+        "requested_tonnes": 62.0,
+        "booked_tonnes": 0,
+        "unserved_tonnes": 62.0,
+        "requests": 1
+      },
+      {
+        "corridor": "vaikom → alappuzha",
+        "requested_tonnes": 240.0,
+        "booked_tonnes": 0,
+        "unserved_tonnes": 240.0,
+        "requests": 1
+      }
+    ],
+    "terminals": [
+      {
+        "terminal": "Maradu cargo terminal",
+        "node_id": "maradu",
+        "nearby_demand_tonnes": 138.0,
+        "reserved_slots": 1,
+        "activation_score": 77.6,
+        "capacity_gap_tonnes": 0,
+        "source": "Demo decision-support heuristic; not authoritative infrastructure planning"
+      },
+      {
+        "terminal": "Vaikom cargo terminal",
+        "node_id": "vaikom",
+        "nearby_demand_tonnes": 240.0,
+        "reserved_slots": 0,
+        "activation_score": 98.0,
+        "capacity_gap_tonnes": 0,
+        "source": "Demo decision-support heuristic; not authoritative infrastructure planning"
+      },
+      {
+        "terminal": "Thanneermukkom cargo terminal",
+        "node_id": "thanneermukkom",
+        "nearby_demand_tonnes": 0.0,
+        "reserved_slots": 0,
+        "activation_score": 50.0,
+        "capacity_gap_tonnes": 0,
+        "source": "Demo decision-support heuristic; not authoritative infrastructure planning"
+      },
+      {
+        "terminal": "Alappuzha cargo terminal",
+        "node_id": "alappuzha",
+        "nearby_demand_tonnes": 62.0,
+        "reserved_slots": 1,
+        "activation_score": 62.4,
+        "capacity_gap_tonnes": 0,
+        "source": "Demo decision-support heuristic; not authoritative infrastructure planning"
+      }
+    ],
+    "failed_match_count": 0,
+    "corridor_reliability": {
+      "sample_count": 0,
+      "median_estimated_journey_hours": null,
+      "estimated_on_time_pct": null,
+      "source": "Application plan estimates; insufficient real voyage history for predictive reliability"
+    },
+    "flood_simulated": false,
+    "emission_factors": {
+      "road_kg_per_tonne_km": 0.105,
+      "water_kg_per_tonne_km": 0.028,
+      "source_name": "Prototype assumptions; not certified emission factors",
+      "source_date": "2026-10-06",
+      "verification_status": "SIMULATED"
+    },
+    "source": "Aggregated application bookings using synthetic inputs. Selected/confirmed impact is potential; completed impact is separately reported. No certified environmental claims."
+  }
+}
