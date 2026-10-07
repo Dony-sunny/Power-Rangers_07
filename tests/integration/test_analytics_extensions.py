@@ -35,7 +35,7 @@ def test_failed_demand_reason_aggregation_unique_tonnage(client):
     for _ in range(2):
         assert (
             client.get(
-                "/api/cargo/unserved-cargo/matches", headers={"X-Demo-Role": "control"}
+                "/api/cargo/unserved-cargo/matches", headers={"X-Demo-Role": "admin"}
             ).status_code
             == 200
         )
@@ -59,7 +59,8 @@ def test_modal_shift_xlsx_upload_computed(client):
     assert response.status_code == 200, response.text
     result = response.json()
     assert result["total_shipments_analyzed"] == 1
-    assert result["rows"][0]["suitability"] == "HIGH"
+    # Fixed sailing charges can leave this historical load cheaper on road.
+    assert result["rows"][0]["suitability"] == "MEDIUM"
     assert result["candidate_tonnes"] == 80
     assert result["estimated_co2_difference_kg"] > 0
 

@@ -344,6 +344,8 @@ def seed(db):
     from backend.services.analytics import seed_rate_history
 
     seed_rate_history(db)
+    from backend.services.line_seed import seed_lines
+    seed_lines(db)
     db.commit()
 
 
@@ -359,6 +361,8 @@ def initialize(reset=False):
         from backend.services.analytics import seed_rate_history
 
         seed_rate_history(db)
+        from backend.services.line_seed import seed_lines
+        seed_lines(db)
         db.commit()
 
 

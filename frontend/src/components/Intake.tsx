@@ -35,18 +35,24 @@ const isoTime = (value: string) =>
 
 export default function Intake({
   kind = "cargo",
+  initialTab,
+  initialVesselId,
   data,
   role,
   done,
   close,
 }: {
   kind?: "cargo" | "vessel";
+  initialTab?: string;
+  initialVesselId?: string;
   data: Data;
   role: string;
-  done: () => void | Promise<void>;
+  done: (created?: Cargo) => void | Promise<void>;
   close?: () => void;
 }) {
-  const [tab, setTab] = useState(kind === "cargo" ? "text" : "voice"),
+  const [tab, setTab] = useState(
+      initialTab || (kind === "cargo" ? "text" : "voice"),
+    ),
     [text, setText] = useState(kind === "cargo" ? sample : voiceSample),
     [extraction, setExtraction] = useState<Data | null>(null),
     [error, setError] = useState(""),
@@ -54,7 +60,9 @@ export default function Intake({
     [file, setFile] = useState<File | null>(null),
     [useDemo, setUseDemo] = useState(false),
     [recording, setRecording] = useState(false),
-    [vesselId, setVesselId] = useState(data.vessels[0]?.id || ""),
+    [vesselId, setVesselId] = useState(
+      initialVesselId || data.vessels[0]?.id || "",
+    ),
     [bulk, setBulk] = useState<Data | null>(null);
   const [fields, setFields] = useState<Data>({
     cargo_type: "",
@@ -76,6 +84,23 @@ export default function Intake({
     perishable: false,
     temperature_control_required: false,
   });
+  useEffect(() => {
+    if (kind !== "vessel" || tab !== "manual") return;
+    const vessel = data.vessels.find((v: Data) => v.id === vesselId);
+    const listing = data.availability.find(
+      (a: Data) => a.vessel_id === vesselId,
+    );
+    setFields((f) => ({
+      ...f,
+      capacity_tonnes: String(
+        listing?.capacity_tonnes || vessel?.max_capacity_tonnes || "",
+      ),
+      origin: listing?.origin || "Kochi",
+      destination: listing?.destination || "Alappuzha",
+      available_from: inputTime(listing?.available_from || ""),
+      available_until: inputTime(listing?.available_until || ""),
+    }));
+  }, [kind, tab, vesselId]);
   const recorder = useRef<MediaRecorder | null>(null),
     stream = useRef<MediaStream | null>(null),
     chunks = useRef<Blob[]>([]);
@@ -167,6 +192,7 @@ export default function Intake({
     setBusy(true);
     setError("");
     try {
+      let createdCargo: Cargo | undefined;
       if (kind === "cargo") {
         const payload = { ...fields };
         for (const key of [
@@ -184,6 +210,7 @@ export default function Intake({
         payload.ready_time = isoTime(payload.ready_time);
         payload.delivery_deadline = isoTime(payload.delivery_deadline);
         const created = await api<Cargo>("/cargo", role, payload);
+        createdCargo = created;
         if (extraction?.document_id)
           await api(
             `/cargo/${created.id}/documents/${extraction.document_id}`,
@@ -202,7 +229,7 @@ export default function Intake({
           volume_m3: vessel.max_volume_m3,
         });
       }
-      await done();
+      await done(createdCargo);
     } catch (e) {
       setError(
         (e as Error).message === "Invalid time value"
@@ -293,9 +320,7 @@ export default function Intake({
   return (
     <Panel
       title={
-        kind === "cargo"
-          ? "Create cargo request"
-          : "Malayalam vessel availability"
+        kind === "cargo" ? "Create cargo request" : "Publish boat availability"
       }
       eyebrow="UNDERSTAND → REVIEW → CONFIRM"
       action={
@@ -518,7 +543,7 @@ export default function Intake({
         {(extraction || tab === "manual") && (
           <div className="intake-review">
             <div className="section-heading">
-              <h3>Review structured fields</h3>
+              <h3>Check the details before saving</h3>
               {kind === "cargo" && tab === "manual" && (
                 <button className="text-button" onClick={demoManual}>
                   Fill demo cargo
@@ -531,7 +556,7 @@ export default function Intake({
                   <Check size={16} />
                   {extraction.source === "llm"
                     ? "Configured AI extraction"
-                    : "Deterministic local extraction"}{" "}
+                    : "Details filled from your description"}{" "}
                   · confirm every field
                 </div>
                 {extraction.transcript && (
@@ -632,7 +657,22 @@ export default function Intake({
                   ]
               ).map((key) => (
                 <label key={key} className="field">
-                  {key.replace(/_/g, " ")} {required.includes(key) && "*"}
+                  {(
+                    {
+                      cargo_type: "Goods to transport",
+                      weight_tonnes: "Weight (tonnes)",
+                      volume_m3: "Volume (m³)",
+                      packaging: "Packaging",
+                      origin: "Pickup location",
+                      destination: "Delivery location",
+                      ready_time: "Ready for pickup",
+                      delivery_deadline: "Deliver by",
+                      capacity_tonnes: "Available capacity (tonnes)",
+                      available_from: "Available from",
+                      available_until: "Available until",
+                    } as Record<string, string>
+                  )[key] || key.replace(/_/g, " ")}{" "}
+                  {required.includes(key) && "*"}
                   {["origin", "destination"].includes(key) ? (
                     <select
                       aria-label={key}

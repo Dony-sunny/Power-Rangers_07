@@ -19,7 +19,7 @@ SECTION = {
     ),
     3: (
         "IMPLEMENTED",
-        "requirements.txt",
+        "backend/requirements.txt",
         "React/TS/Vite, Leaflet, Recharts, FastAPI/Pydantic/SQLAlchemy/SQLite, OR-Tools and graph routing.",
     ),
     4: (

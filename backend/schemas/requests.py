@@ -61,8 +61,7 @@ class VesselCreate(StrictModel):
     hazardous_certified: bool = False
 
 
-class AvailabilityCreate(StrictModel):
-    vessel_id: str
+class AvailabilityDetails(StrictModel):
     origin: str
     destination: str
     available_from: datetime
@@ -81,6 +80,16 @@ class AvailabilityCreate(StrictModel):
         if self.origin.casefold() == self.destination.casefold():
             raise ValueError("Availability endpoints must differ.")
         return self
+
+
+class AvailabilityCreate(AvailabilityDetails):
+    vessel_id: str
+
+
+class VesselListing(StrictModel):
+    vessel: VesselCreate
+    availability: AvailabilityDetails
+    demo_certificate_review: bool = False
 
 
 class TextIntake(StrictModel):

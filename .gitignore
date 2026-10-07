@@ -16,3 +16,5 @@ playwright-report/
 .runtime/x1
 !data/demo/*.pdf
 agent.md
+.agents/
+.codex

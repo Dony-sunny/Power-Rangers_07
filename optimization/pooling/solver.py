@@ -27,6 +27,10 @@ def optimize_pool(db, anchor, vessel, organization_id=None, persist=True, actor=
     plan = feasibility["plan"]
     eligible = []
     for cargo in db.scalars(select(CargoRequest).order_by(CargoRequest.id)):
+        if actor and actor.role_id == "control":
+            from backend.auth import coordinated_orgs
+            if cargo.organization_id not in coordinated_orgs(db, actor):
+                continue
         if (
             organization_id
             and cargo.organization_id != organization_id

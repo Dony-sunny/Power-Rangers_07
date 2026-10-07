@@ -1,10 +1,44 @@
 # Jalayatra AI
 
-**Kerala's Agentic Inland Freight Exchange & Multimodal Logistics Operating System**
+**A marketplace for cargo owners and boat operators on Kerala’s waterways.**
 
-A working React + FastAPI freight prototype: text, scanned documents or XLSX become reviewed cargo; Malayalam-friendly operator intake becomes capacity; deterministic feasibility, pooling, fleet assignment, recurring services and terminal resources lead to approved bookings, evidence, recovery and measured impact.
+Browse and search boat listings, filter by route and capacity, post cargo with its
+load details, compare full road/water delivery prices, choose a preferred departure
+and follow each booking. Boat operators publish availability and accept delivery
+requests; logistics coordinators confirm providers and record delivery progress.
 
-![Shipper transport planner](docs/screenshots/shipper.png)
+Start with **Post cargo** or the cement sample in **Browse boats**. Choose
+**Compare & book** on a boat card, then continue to schedule planning. The full
+quote includes connecting trucks and terminal charges. All provider responses
+remain simulated in this local prototype.
+
+To try fresh entries, use **Boat operator → My boats → Add a new boat**. Enter
+its measurements and route; explicitly select the simulated certificate review
+for a bookable demo boat. Then switch to **Cargo owner → Post cargo**, enter a
+new load, and choose that boat. Approve the quote and follow the operator and
+logistics handoffs. Small loads can be accepted after the operator acknowledges
+any estimated sailing shortfall. Each truck and terminal job must be accepted
+before confirmation; progress and the final receipt are saved. **My bookings**
+provides a way to restart a declined or expired quote.
+
+## Challenge 7: Backwater Cargo Exchange
+
+**Problem:** A builder in Kochi can get a truck price in one call. Getting a barge price takes several calls, without one clear delivered cost or arrival time. Jalayatra brings those decisions into one guided delivery flow.
+
+The supplied IBM × Kerala Government brief asks for a marketplace connecting cargo owners and inland boat operators. Its example is construction materials moving from Kochi to Alappuzha. All five suggested features have working local-prototype flows:
+
+| Brief feature | Where to use it | Implementation evidence |
+|---|---|---|
+| Cargo posting | Cargo owner → **1. Choose cargo** → Post new cargo; review before saving | [Reviewed intake](frontend/src/components/Intake.tsx), `POST /api/cargo` |
+| Boat availability listing | Boat operator → **List boat availability**; review capacity, corridor and exact dates | [Intake](frontend/src/components/Intake.tsx), `POST /api/availability` |
+| Matching recommendations | Cargo owner → **2. Compare boats & costs**; ranked feasible boats and visible safety rejections | [Matching](optimization/matching/engine.py), `GET /api/cargo/{id}/matches` |
+| Schedule planning | **3. Plan departure** → shared loads → **4. Approve & track** → operator → coordinator | [Planner](backend/services/line_planning.py), [confirmation workflow](backend/services/cargo_lines.py) |
+| Cost comparison | **2. Compare boats & costs**; itemized road vs water with connecting trucks | [Whole-trip costs](optimization/multimodal/trip_costs.py), `GET /api/lines/cargo/{id}/advice` |
+| Sustainable logistics and increased waterway use | Coordinator → **Delivery & impact**; selected/completed tonnes and labeled full-delivery CO₂ estimates | [Record-derived impact](backend/services/cargo_lines.py), [reproducible fixture](data/demo/measured-results.json) |
+
+Four brief target groups participate through three main workspaces: cargo owners as shippers, boat operators, logistics companies as coordinators, and inland waterway service providers through own-vessel availability and coordinated truck/terminal jobs. Additional dashboards are not needed for this demonstration.
+
+Open **Challenge coverage** in the app to inspect the mapping and download it. The [machine-readable coverage manifest](frontend/src/challenge-coverage.json) gives feature names, behaviors, API paths, source files, verification scenarios and prototype limits. It contains no customer records. [Browser checks](frontend/e2e/demo.spec.ts) verify the connected workflow and visible coverage; [backend checks](tests/integration/test_cargo_lines.py) verify constraints, quotes, shared resources and approvals. These are reproducible evidence, not a guarantee of selection.
 
 ## Start locally
 
@@ -36,20 +70,20 @@ In a second terminal: `cd frontend` then `npm run dev`. For a production fronten
 
 ## Reproduce the flagship demo
 
-For the guided version, switch to **Platform admin → Judge demo**. Preview each checkpoint, explicitly approve intake/booking/departure, and optionally include whole-pool cancellation recovery. It calls the same services as the manual workspaces. [Complete feature audit](docs/FEATURE_AUDIT.md) records all 56 master sections, every role feature and continuation phases with source references.
+1. **Demo & settings → Reset demo transactions**, on a disposable demo database.
+2. **Cargo owner → 1. Choose cargo:** choose **Compare this cargo** on the preloaded 80 t cement request. In **2. Compare boats & costs**, click **Compare delivery costs**. See ranked boats and MV Deep Blue's visible draft rejection. New cargo uses reviewed text/document/manual intake and reviewed load units.
+3. **Continue to schedule planning:** inspect departure/arrival times, **Suggest compatible loads** or select 58 t steel, then **Request dated departure**. The flow moves to **4. Approve & track**. Approve both exact quotes, then use **Open boat operator workspace** for the demo handoff.
+4. **Boat operator:** review the combined load and modeled contribution, then **Accept reviewed departure**. Voice availability uses an explicitly selected Malayalam transcript fallback and reviewed exact times.
+5. **Logistics coordinator:** use **Simulate remaining provider acceptances**, or respond to each job separately. Four pickup trucks and eight shared terminal jobs are persisted; the shortcut records each acceptance individually. **Confirm delivery bundle** only after every approval.
+6. Record shared Scheduled → Loading → In transit → Unloading milestones and each individual door receipt. Open **Delivery & impact** to read selected/completed tonnes and labeled full-delivery CO₂ estimates.
+7. For a separate recovery demonstration, withdraw the vessel **before pickup**, find replacements and request new quotes. Owners, the replacement’s own operator and every new job must accept. Use the Pamba operator account for MV Pamba.
 
-1. Switch to **Platform admin** and click **Reset demo transactions**.
-2. Switch to **Vessel operator**, select **Voice availability**, click **Use demo transcript**, review the 150 t Kochi → Alappuzha extraction and confirm the suggested operating window. This is a disclosed transcript fallback, not live speech recognition.
-3. Switch to **Shipper procurement**. The 80 t cement request is preloaded. Use **New cargo request** for text, text/scanned PDF, PNG/JPEG, manual or CSV/XLSX intake. Run `.venv/Scripts/python.exe scripts/make_demo_documents.py` to generate current-dated synthetic samples. Bulk import previews valid/invalid rows before approval.
-4. Expand **MV Deep Blue**: its attractive commercial fit cannot override the draft failure. MV Vembanad passes the configured physical constraints.
-5. Inspect road, water and hybrid. Direct water is unavailable for a door pickup; hybrid includes the connecting truck. With terminal-to-terminal cargo, water is available. Urgent cargo can cause road to win.
-6. Click **Optimize**: 80 + 58 = **138 t**, **92%** of the 150 t vessel. Click **Find return**: a **62 t coir** load fits the return window.
-7. Click **Confirm pooled hybrid booking**. Both cargo records receive bookings, shipments, invoice drafts and impact records in one transaction.
-8. Switch to **Shipper dispatch** or **Captain**. Advance each shipment through scheduled → loading → in transit → unloading → delivered. Required last-mile cargo has an additional last-mile milestone.
-9. Switch to **Government analytics**. **138 t** selected for water is derived from those two bookings. Completed tonnage increases only as shipments finish. No transaction means zero shifted cargo, savings or avoided CO₂.
-10. For recovery, reset and book the hero or pool. Dispatch can simulate eight disruption types, inspect cost/ETA changes and approve an individual or whole-pool replacement. Recovery is pre-departure. For verified prototype delivery, the consignee requests and enters the local OTP at unloading; old milestone-only demo deliveries remain unverified.
+Quotes expire within 20 minutes and before cutoff. A declined job releases local
+holds; confirmation is idempotent. Cancelling one confirmed member keeps the other
+member’s common reservations and accepted price. All provider execution is simulated.
 
-Full timing and A–F scenario instructions: [Demo script](docs/DEMO_SCRIPT.md).
+[Five-minute demo](docs/DEMO_SCRIPT.md) · [Nine slides](docs/PRESENTATION_OUTLINE.md) ·
+[API](docs/API.md) · [Generated evidence](data/demo/measured-results.json).
 
 ## What is implemented
 
@@ -63,7 +97,7 @@ Full timing and A–F scenario instructions: [Demo script](docs/DEMO_SCRIPT.md).
 | Execution | Atomic bookings/states; simulated tracking; berth/equipment/storage/gate collision checks; truck/crew/loading records; private photos, authorized opaque QR labels, local prototype OTP and documents |
 | Recovery | Eight pre-departure disruptions; later/service/vessel/terminal/road alternatives; cost/ETA deltas and atomic whole-pool approval |
 | Intelligence | Booking-derived impact, corridor actual milestones, rate sample bounds, typed failed demand, historical modal-shift upload, reviewed/photo navigation observations, activation and flood decision support |
-| Roles | 15 workspaces; organization/user create/change/disable, payment/disputes, provider diagnostics, signed stored identities, backend scope checks and financial redaction |
+| Roles | Three main workspaces: cargo owner, boat operator, logistics coordinator. Scoped grants/jobs and own-vessel acceptance; retained legacy models/APIs for compatibility |
 | Reliability | Offline schematic map, optional OSM tiles, no mandatory external AI, seed/reset commands, unit/integration/browser tests, CI |
 
 Advanced role features are explicitly mapped to implemented behavior or architecture in [Workspace coverage](docs/WORKSPACE_COVERAGE.md); roadmap integrations are not represented as connected.
@@ -88,9 +122,9 @@ npm run test:e2e
 
 Browser tests require the two local services and reset the demo database. If using a workspace browser installation, set `PLAYWRIGHT_BROWSERS_PATH` to its path. Backend tests use isolated in-memory databases. See [Testing](docs/TESTING.md).
 
-Verified continuation gate: **93 backend tests**, **15 browser tests**, and the production build pass. New checks include actual scanned-PDF OCR, recurring rollback, fleet compatibility, terminal collisions and pooled equipment, private evidence/QR/OTP, administration and guided recovery. Tests establish the documented prototype behavior; the audit retains production and secondary-feature gaps.
+Current verification commands and evidence are in [Testing](docs/TESTING.md). The focused browser suite covers the three-role quote/provider/receipt journey; legacy services retain backend coverage.
 
-Reset from the admin UI, or stop the API and run `.venv/Scripts/python.exe scripts/reset_demo.py`. This intentionally deletes previous **demo** records. Seed without deleting records: `.venv/Scripts/python.exe -m data.seed.network`.
+Reset from Demo & settings, or stop the API and run `.venv/Scripts/python.exe scripts/reset_demo.py`. This intentionally deletes previous **demo** records. Seed without deleting records: `.venv/Scripts/python.exe -m data.seed.network`.
 
 ## Repository and submission
 
@@ -102,6 +136,6 @@ Reset from the admin UI, or stop the API and run `.venv/Scripts/python.exe scrip
 - [Roadmap](docs/FUTURE_ROADMAP.md) · [Measured demo output](data/demo/measured-results.json)
 - [Feature audit](docs/FEATURE_AUDIT.md) · [Provider setup](docs/PROVIDER_SETUP.md) · [Publication commands](docs/GITHUB_PUBLICATION.md)
 
-Reproduce the numbers with `.venv/Scripts/python.exe scripts/generate_measured_results.py`. The hero computes 138 t/92% utilization, ₹27,857.40 pooled cost difference, 723.66 kg estimated CO₂ difference and seven equivalent long-haul truck movements. All rates/emissions/navigation inputs are synthetic assumptions, and a 62 t return **opportunity** counts as avoided empty travel only when booked.
+Reproduce the numbers with `.venv/bin/python scripts/generate_measured_results.py` (Windows: `.venv/Scripts/python.exe`). The fixture computes 138 t / 92%, ₹12,240 modeled sailing contribution, ₹15,766.47 delivered-cost difference, 723.66 kg estimated full-delivery CO₂ difference, seven long-haul equivalents and four connecting trips. Rates and factors are synthetic; return opportunities are excluded from contribution and impact.
 
-This is a Git-initialized local repository with reviewed publication commands. Existing `origin` points to `Dony-sunny/keralAI_hack`; this continuation made local commits and performed no push or hosted deployment. Remote visibility/content was not verified. [Known limitations](docs/KNOWN_LIMITATIONS.md) and the audit identify remaining partial/production requirements.
+This is a Git-initialized local repository with reviewed publication commands. Existing `origin` points to `Dony-sunny/keralAI_hack`; this implementation makes local changes and performs no push or hosted deployment. Remote visibility/content was not verified. [Known limitations](docs/KNOWN_LIMITATIONS.md) and the audit identify remaining partial/production requirements.

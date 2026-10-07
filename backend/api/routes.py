@@ -7,6 +7,7 @@ from backend.repositories.common import uid, record, require, audit
 from backend.schemas.requests import (
     CargoCreate,
     VesselCreate,
+    VesselListing,
     AvailabilityCreate,
     BookingCreate,
     StateChange,
@@ -81,9 +82,46 @@ def list_cargo(db=Depends(get_db), actor=Depends(get_actor)):
     from backend.auth import GLOBAL_ROLES
 
     query = select(CargoRequest).order_by(CargoRequest.created_at.desc())
-    if actor.role_id not in GLOBAL_ROLES:
+    if actor.role_id == "control":
+        from backend.auth import coordinated_orgs
+        query = query.where(CargoRequest.organization_id.in_(coordinated_orgs(db, actor)))
+    elif actor.role_id not in GLOBAL_ROLES:
         query = query.where(CargoRequest.organization_id == actor.organization_id)
     return [record(item) for item in db.scalars(query)]
+
+
+@router.post("/vessels/with-availability", status_code=201)
+def register_boat_listing(payload: VesselListing, db=Depends(get_db), actor=Depends(get_actor)):
+    from datetime import timedelta
+    from backend.config import settings
+    from backend.services.bookings import lock_writes
+    from backend.services.timeutils import utcnow
+    permission(actor, "vessel_write")
+    permission(actor, "availability_write")
+    if payload.demo_certificate_review and not settings.demo_mode:
+        raise HTTPException(403, "Simulated certificate review is only available in demo mode.")
+    if payload.availability.capacity_tonnes > payload.vessel.max_capacity_tonnes or payload.availability.volume_m3 > payload.vessel.max_volume_m3:
+        raise HTTPException(422, "Listed availability cannot exceed the boat’s physical capacity.")
+    lock_writes(db)
+    vessel = Vessel(id=uid("vessel"), organization_id=actor.organization_id,
+                    compliance_status="PASS" if payload.demo_certificate_review else "PENDING",
+                    reliability_score=0.5, **payload.vessel.model_dump())
+    db.add(vessel)
+    db.flush()
+    availability = VesselAvailability(id=uid("availability"), vessel_id=vessel.id,
+                                      **payload.availability.model_dump(mode="json"))
+    db.add(availability)
+    if payload.demo_certificate_review:
+        expires = max(utcnow(), payload.availability.available_until) + timedelta(days=365)
+        for kind in ["REGISTRATION", "INSURANCE"]:
+            db.add(VesselCertificate(id=uid("certificate"), vessel_id=vessel.id, kind=kind,
+                                     expires_at=expires.isoformat(), verified=True))
+        vessel.trust_metrics = {"certificate_source": "SIMULATED demo review; no real documents verified"}
+    audit(db, "vessel.registered_with_availability", vessel.id, actor,
+          certificate_source="SIMULATED" if payload.demo_certificate_review else "PENDING_REVIEW")
+    db.commit()
+    return {"vessel": record(vessel), "availability": record(availability),
+            "certificate_source": "SIMULATED" if payload.demo_certificate_review else "PENDING_REVIEW"}
 
 
 @router.post("/vessels", status_code=201)
@@ -126,6 +164,48 @@ def post_availability(
         and check_feasibility(db, c, vessel)["passed"]
     ]
     return {"availability": record(availability), "compatible_cargo_ids": opportunities}
+
+
+def editable_availability(db, actor, availability_id):
+    from backend.services.bookings import lock_writes
+    from backend.services.cargo_lines import expire
+    from feasibility.vessel_constraints.checks import ACTIVE_BOOKING_STATES
+
+    permission(actor, "availability_write")
+    lock_writes(db)
+    listing = require(db, VesselAvailability, availability_id)
+    vessel_access(actor, require(db, Vessel, listing.vessel_id))
+    expire(db)
+    for voyage in db.scalars(select(CargoVoyage).where(CargoVoyage.status.in_(["HELD", "CONFIRMED"]))):
+        if voyage.plan["availability_id"] == availability_id:
+            raise HTTPException(409, "This listing is reserved by a departure. Publish a new availability window instead.")
+    if db.scalar(select(Booking).where(Booking.availability_id == availability_id, Booking.status.in_(ACTIVE_BOOKING_STATES))):
+        raise HTTPException(409, "This listing is reserved by a booking. Publish a new availability window instead.")
+    return listing
+
+
+@router.put("/availability/{availability_id}")
+def update_availability(availability_id: str, payload: AvailabilityCreate, db=Depends(get_db), actor=Depends(get_actor)):
+    listing = editable_availability(db, actor, availability_id)
+    if payload.vessel_id != listing.vessel_id:
+        raise HTTPException(422, "An availability listing must stay with its registered boat.")
+    vessel = require(db, Vessel, listing.vessel_id)
+    if payload.capacity_tonnes > vessel.max_capacity_tonnes or payload.volume_m3 > vessel.max_volume_m3:
+        raise HTTPException(422, "Listed availability cannot exceed vessel capacity.")
+    for key, value in payload.model_dump(mode="json").items():
+        setattr(listing, key, value)
+    audit(db, "vessel.availability_updated", listing.id, actor)
+    db.commit()
+    return record(listing)
+
+
+@router.post("/availability/{availability_id}/visibility")
+def availability_visibility(availability_id: str, active: bool, db=Depends(get_db), actor=Depends(get_actor)):
+    listing = editable_availability(db, actor, availability_id)
+    listing.active = active
+    audit(db, "vessel.availability_visibility", listing.id, actor, active=active)
+    db.commit()
+    return record(listing)
 
 
 @router.get("/cargo/{cargo_id}/matches")

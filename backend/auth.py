@@ -41,7 +41,7 @@ PERMISSIONS = {
     "audit": {"admin", "compliance"},
     "demo_admin": {"admin"},
 }
-GLOBAL_ROLES = {"admin", "control", "government", "network", "compliance"}
+GLOBAL_ROLES = {"admin", "government", "network", "compliance"}
 COMMERCIAL_ROLES = {"shipper", "operator", "control", "finance", "admin"}
 
 
@@ -98,11 +98,22 @@ def permission(actor, name):
 
 
 def cargo_access(actor, cargo):
+    if actor.role_id == "control":
+        from sqlalchemy.orm import object_session
+        db = object_session(cargo)
+        if cargo.organization_id in coordinated_orgs(db, actor):
+            return
     if (
         actor.role_id not in GLOBAL_ROLES
         and cargo.organization_id != actor.organization_id
     ):
         raise HTTPException(404, "Record not found.")
+
+
+def coordinated_orgs(db, actor):
+    from backend.models import CoordinationGrant
+    return {actor.organization_id} | set(db.scalars(select(CoordinationGrant.owner_org_id).where(
+        CoordinationGrant.coordinator_org_id == actor.organization_id)))
 
 
 def vessel_access(actor, vessel):

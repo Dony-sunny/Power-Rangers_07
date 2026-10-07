@@ -25,6 +25,9 @@ export async function api<T = Data>(
     method: method || (body ? "POST" : "GET"),
     headers: {
       "X-Demo-Role": role,
+      ...(role === "operator" && localStorage.getItem("jalayatra-operator-user")
+        ? { "X-Demo-User": localStorage.getItem("jalayatra-operator-user")! }
+        : {}),
       ...(sessionStorage.getItem("jalayatra-token")
         ? {
             Authorization: `Bearer ${sessionStorage.getItem("jalayatra-token")}`,
@@ -82,7 +85,7 @@ export const money = (n: number | null | undefined) =>
     : new Intl.NumberFormat("en-IN", {
         style: "currency",
         currency: "INR",
-        maximumFractionDigits: 0,
+        maximumFractionDigits: 2,
       }).format(n);
 export const date = (value: string | undefined) =>
   value
