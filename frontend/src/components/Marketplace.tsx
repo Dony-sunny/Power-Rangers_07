@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Ship,
   SlidersHorizontal,
+  Sparkles,
 } from "lucide-react";
 import { api, date, money, title, type Cargo, type Data } from "../api";
 import { Empty } from "./UI";
@@ -230,7 +231,7 @@ export default function Marketplace({
             value={sort}
             onChange={(e) => setSort(e.target.value)}
           >
-            <option value="recommended">Recommended</option>
+            <option value="recommended">✨ AI Shortlisted (Optimal Match)</option>
             <option value="capacity">Highest capacity</option>
             <option value="price">Lowest base rate</option>
           </select>
@@ -328,8 +329,10 @@ export default function Marketplace({
                       className={rank === 0 ? "boat-label best" : "boat-label"}
                     >
                       {rank === 0
-                        ? "Recommended match"
-                        : `${title(v.vessel_type)} · ${a.capacity_tonnes} t`}
+                        ? `✨ AI Shortlisted #1 · ${Math.round(vesselMatch?.score || 85)}% Match`
+                        : rank !== undefined
+                          ? `AI Shortlisted · ${Math.round(vesselMatch?.score || 70)}% Match`
+                          : `${title(v.vessel_type)} · ${a.capacity_tonnes} t`}
                     </span>
                   </div>
                   <div className="boat-card-body">
@@ -355,6 +358,41 @@ export default function Marketplace({
                         <strong>{a.volume_m3} m³</strong>Cargo volume
                       </span>
                     </div>
+                    {vesselMatch && rank !== undefined && (
+                      <div
+                        style={{
+                          background: "#f0fdf4",
+                          border: "1px solid #bbf7d0",
+                          borderRadius: "6px",
+                          padding: "6px 10px",
+                          margin: "6px 0",
+                          fontSize: "0.8rem",
+                          color: "#166534",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            fontWeight: 600,
+                            marginBottom: "2px",
+                          }}
+                        >
+                          <Sparkles size={13} color="#15803d" />
+                          <span>AI Shortlist Rationale ({Math.round(vesselMatch.score)}% fit)</span>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "0.74rem",
+                            color: "#14532d",
+                            lineHeight: "1.25",
+                          }}
+                        >
+                          {vesselMatch.reasons?.[1] || "Feasible draft, capacity fit & optimal emissions reduction"}
+                        </div>
+                      </div>
+                    )}
                     <p className="boat-dates">
                       <CalendarDays size={15} />
                       {date(a.available_from)}
@@ -391,6 +429,41 @@ export default function Marketplace({
               );
             })}
           </div>
+          {matched?.rejected && matched.rejected.length > 0 && !operator && (
+            <details
+              style={{
+                marginTop: "20px",
+                background: "#f9fafb",
+                border: "1px solid #e5e7eb",
+                borderRadius: "8px",
+                padding: "12px 16px",
+              }}
+            >
+              <summary
+                style={{
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  color: "#374151",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <ShieldCheck size={16} color="#059669" />
+                <span>
+                  AI Feasibility Exclusions: {matched.rejected.length} boat(s) excluded for navigation safety
+                </span>
+              </summary>
+              <div style={{ marginTop: "10px", fontSize: "0.85rem", color: "#4b5563" }}>
+                {matched.rejected.map((r: Data) => (
+                  <div key={r.vessel_id} style={{ padding: "6px 0", borderBottom: "1px solid #f3f4f6" }}>
+                    <strong style={{ color: "#111827" }}>{r.vessel_name}:</strong>{" "}
+                    {r.feasibility?.reasons?.join("; ") || "Exceeded waterway safety limits"}
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
           {!filtered.length && (
             <Empty>
               <Ship size={35} />

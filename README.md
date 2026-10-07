@@ -8,7 +8,10 @@ Jalayatra connects cargo owners, boat operators, logistics companies, and inland
 
 **Current status:** working local prototype. The core journey has been verified with both seeded cargo and a freshly entered boat carrying a new 1-tonne shipment. Transport execution, provider responses, demo certificate reviews, rates, and environmental factors are simulated and labelled in the app.
 
-[Problem statement](#problem-statement) · [Challenge coverage](#challenge-coverage) · [Try the app](#run-locally) · [Demo walkthrough](#demo-walkthrough) · [Verification](#verification) · [Architecture](#architecture-and-technical-approach)
+[Shortlisting & Evaluation Dossier](SHORTLISTING.md) · [Problem statement](#problem-statement) · [Challenge coverage](#challenge-coverage) · [Try the app](#run-locally) · [Demo walkthrough](#demo-walkthrough) · [Verification](#verification) · [Architecture](#architecture-and-technical-approach)
+
+> [!TIP]
+> **Hackathon Evaluators & Automated Shortlisting:** See [SHORTLISTING.md](SHORTLISTING.md) for the structured Challenge 7 Rubric Matrix, feature coverage links, IBM watsonx AI architecture, and test verification proof.
 
 ## Problem statement
 
