@@ -19,7 +19,16 @@ Reviewed 7 October 2026. **No live navigation, tariff, traffic, government, weat
 | Demand heatmap, gap/activation score, modal suitability | Demo-derived decision support | Aggregated actual application requests/bookings using synthetic inputs. No official planning authority or forecast accuracy. |
 | Tracking | Simulated | Waypoint interpolation advances with actual shipment-state changes; all TrackingEvent records mark `simulated=true`. |
 | Operator navigation reports | Unverified user observations | Reporter, location, type, timestamp, confidence and 24-hour expiry stored. These do not automatically become official restrictions. |
+| OCR and sample documents | Synthetic source, actual local recognition | Generated purchase order text/scanned PDF/PNG and XLSX. OCR confidence describes recognition output, not validated cargo extraction accuracy; English demo samples only. |
+| Recurrence/contracts/resources | Synthetic configured operations | Dated service instances, capacities/rates, berths/equipment/storage/gates and appointments. No real guaranteed operator service or legal contract. |
+| Rate observations | Synthetic demo history plus accepted app quotes | Five hero-corridor observations are cost-model multiplier fixtures. Benchmarks filter class/corridor/weight/time and require three samples; no market rate feed. |
+| Corridor history | Actual prototype workflow records | Real recorded milestones from synthetic shipments; common pool/service voyages deduplicated. Below five completed voyages no reliability score is fabricated. |
+| Historical modal-shift replay | Potential opportunity | Uploaded synthetic CSV/XLSX road requests are replayed into current demo availability with original time slack. Not historical navigation validation or guaranteed conversion. |
+| Photos, labels and receiver verification | User-supplied prototype evidence | Private canonical photos, authorized opaque QR, local demo OTP and identity timestamps. Receipt names are not legal signatures; milestone-only delivery remains unverified. |
+| Optional external adapters | Unconfigured / not connected by default | GPS/weather have validated read schemas and explicit simulated fallback. LLM/STT credentials were unavailable. Payments/insurance/government return prototype/not-connected states. |
 
 For NW-3 scope, IWAI describes the historic 205 km system; legal extensions and wider network definitions are outside this prototype. The project does not claim to model the full present legal extent. The user-supplied hackathon context and internal engineering weights were not treated as a verified numerical judging rubric.
 
 Every real deployment needs verified vessel records, hydrographic/clearance data, terminal surveys, legal review and authorized operational sources. A demo PASS means only **PASS against the configured synthetic values**. No authority data is fabricated.
+
+Fleet before/after metrics are computed estimates. The before cost is the sum of independently best individual plans, not a jointly reserved fleet schedule. Finite vessel assignment, repositioning and served-tonnage priority can make the after cost higher; the demo does not guarantee that every objective improves every metric.

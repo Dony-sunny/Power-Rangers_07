@@ -35,4 +35,4 @@ Infrastructure measurements, rates, reliability and emission factors are synthet
 
 ## Completed validation
 
-All 18 phases have a working prototype component or an explicitly documented advanced-feature boundary. P0 and P1 acceptance flows pass. 41 backend tests, 9 browser tests and the production frontend build pass. The role coverage matrix, sample PDFs/CSV, generated measured results, screenshots, CI and required submission documents are present. Publishing a remote repository/hosted service and production integrations remain external deployment steps.
+The original baseline passed 41 backend tests, 9 browser tests and production build. The continuation preserves P0/P1 and adds the missing high-value workflows; its final gate passes 93 backend tests, 15 browser tests and build. See [Continuation plan](CONTINUATION_PLAN.md), [Feature audit](FEATURE_AUDIT.md) and [Testing](TESTING.md) for exact current coverage. Public publishing/hosting and production integrations remain unperformed external steps.

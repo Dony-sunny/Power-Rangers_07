@@ -28,7 +28,7 @@ Extraction does not create demand. It returns nullable structured fields, heuris
 
 Pooling previews do not reserve cargo. A confirmed pool creates individual bookings for all accessible cargo in one transaction. Tenant authorization is checked for each member; a shipper cannot approve a competitor's cargo. A 3PL/admin actor can coordinate across organizations in the demo.
 
-Scheduled service capacity is checked per stop-to-stop segment. Shared service reservations can coexist; cargo compatibility and total vessel volume remain enforced. Duplicate cargo reservations are rejected. Recovered cargo leaves its old pool and needs its own approval and reservation check.
+Scheduled service capacity is checked per stop-to-stop segment, including residual commercial contract holds. Dated patterns copy stop offsets and create concrete service/availability instances. Recurring approval reserves all selected dates together or rolls everything back. Shared service berth/equipment reservations can coexist while storage and capacity sum; cargo compatibility/volume remain enforced. Individual recovery removes stale pool membership; whole-pool recovery revalidates combined cargo and updates every member atomically.
 
 ## Roles and tenants
 
@@ -40,7 +40,13 @@ Demo headers select seeded identities only in DEMO_MODE. Outside demo mode, sign
 
 All required domain entities are mapped tables: organizations/users/roles; cargo/documents/preferences; vessels/availability/certificates/maintenance; nodes/segments/restrictions/reports; terminals/capabilities/slots; quotes/matches; pools/backhauls; scheduled services/stops/capacity bookings; bookings/shipments/legs/tracking; invoices/payments; compliance/impact/audit.
 
-JSON stores lists, score explanations and immutable booking-plan snapshots. Critical ownership and references use foreign keys. SQLite `BEGIN IMMEDIATE` serializes booking capacity checks. PostgreSQL paths use row locks for cargo/vessels, but a real migration still requires Alembic, a driver and production contention tests. No claim of production readiness is made.
+JSON stores lists, score explanations and immutable booking-plan snapshots. Critical ownership and references use foreign keys. New extension tables add bulk previews, user status, evidence/labels/challenges, service patterns/occurrences/contracts, resources/appointments, fleet plans/disruptions, demand/rates/report photos and judge state without replacing original tables. SQLite `BEGIN IMMEDIATE` serializes reservation checks. PostgreSQL paths lock cargo/vessel rows; resources/services/contracts still require a reviewed concurrency migration. See [Migration guide](POSTGRESQL_MIGRATION.md).
+
+## Continuation services
+
+Text PDFs and local ONNX OCR run in bounded subprocess workers; spreadsheet parsing applies row/column/decompressed-size limits and rejects formulas/ambiguous headers. AI diagnostics record validated success rather than equating configuration with connectivity. A three-second CP-SAT fleet assignment preview rechecks combined feasibility and explicit atomic approval; it permits one voyage per vessel. Resource calendars enforce peak simultaneous quantity across berths/equipment/storage/gates and suggest bounded alternate slots.
+
+Private canonical photos strip EXIF and require shipment authorization. QR references resolve to authorized records without commercial payloads. Local demo OTP is salted/hashed, expiring and single-use; once requested it gates delivery. Older milestone-only deliveries remain unverified. Corridor/rate/failure/modal-shift analytics read the same transactional records. Optional GPS/weather and commerce/identity contracts have explicit simulated/not-connected defaults. A clean judge controller calls these services rather than swapping screenshots.
 
 ## Operations and offline behavior
 

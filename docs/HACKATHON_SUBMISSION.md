@@ -16,12 +16,12 @@ Jalayatra AI turns cargo descriptions, documents and Malayalam operator availabi
 2. Deterministic end-to-end physical, terminal, schedule and compliance feasibility.
 3. OR-Tools compatible pooling plus return-window backhaul search.
 4. Full road/water/hybrid delivered cost, SLA and transparent carbon estimates.
-5. Shared scheduled-service segment capacity and demand-driven proposals.
-6. Actual application-record impact, unmet-demand heatmap and advisory infrastructure intelligence.
+5. Recurring dated services, segment-capacity contracts, multi-vessel assignment and resource calendars.
+6. Application-record impact, typed failed demand, corridor/rate samples, historical modal-shift opportunities and reviewed navigation observations.
 
 **AI usage:** Optional LLM structured/multimodal extraction and bounded broker function calling; configurable Malayalam STT. Default local mode uses deterministic rules and orchestration, openly labeled. Safety constraints, totals and optimization are never delegated to the LLM. No fake model accuracy or trained ETA claim.
 
-**Tech stack:** React, TypeScript, Vite, Leaflet/optional OpenStreetMap, Recharts, Python/FastAPI, Pydantic, SQLAlchemy/SQLite, OR-Tools CP-SAT, Dijkstra, pypdf and configurable HTTP AI/STT providers.
+**Tech stack:** React, TypeScript, Vite, Leaflet/optional OpenStreetMap, Recharts, Python/FastAPI, Pydantic, SQLAlchemy/SQLite, OR-Tools CP-SAT, Dijkstra, pypdf/pypdfium2, RapidOCR ONNX, openpyxl, Pillow/qrcode and configurable HTTP AI/STT adapters.
 
 **GitHub readiness:** Git repository, coherent modules, ignored secrets/runtime/build output, locked frontend dependencies, setup/reset scripts, automated CI, backend/browser tests, screenshots, API/architecture/provenance/security docs. Remote publishing remains an organizer/user account action; no fictional repository URL is supplied.
 
@@ -29,6 +29,6 @@ Jalayatra AI turns cargo descriptions, documents and Malayalam operator availabi
 
 **Impact metrics:** Confirmed and completed tonnes shifted, equivalent long-haul truck movements, estimated delivered-cost difference, prototype CO₂ difference, vessel utilization, booked backhaul matches and unserved demand. Metrics arise from application bookings, not manually entered impressive numbers. Use `data/demo/measured-results.json` for the reproducible measured fixture result.
 
-**Limitations:** Synthetic navigation and tariff data, approximate graph/road distance, simulated positions, narrow local parser, no certified emissions, no connected government/weather/payment API, no production SSO, and pre-departure individual recovery. See DATA_PROVENANCE.md and KNOWN_LIMITATIONS.md.
+**Limitations:** Synthetic operational data/factors, approximate graph/roads, simulated map positions, narrow local parser, external credentials untested, English demo OCR only, one-voyage fleet assignment, pre-departure recovery, prototype OTP/evidence/contracts and unconnected commerce/government/SSO. See the full feature audit, provenance and known limitations. Exact publication commands are prepared; no public repository or hosted URL is fabricated.
 
 **Challenge context:** User-provided KeralAI Grand Challenge 2026 Kochi / Challenge 7 context. No verified official numerical judging weights are claimed. Working software, repository quality, documentation and demo reliability are treated as primary deliverables.

@@ -68,7 +68,10 @@ def generate():
     try:
         font = ImageFont.truetype("arial.ttf", 36)
     except OSError:
-        font = ImageFont.truetype("DejaVuSans.ttf", 36)
+        try:
+            font = ImageFont.truetype("DejaVuSans.ttf", 36)
+        except OSError:
+            font = ImageFont.load_default(size=36)
     draw = ImageDraw.Draw(image)
     scan_lines = [
         *lines[:2],

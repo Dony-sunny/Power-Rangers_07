@@ -1,0 +1,1055 @@
+[
+  {
+    "number": 1,
+    "title": "HACKATHON CONTEXT AND DESIGN PRIORITIES",
+    "features": [
+      "Maritime & Shipping",
+      "Logistics & Transportation",
+      "Supply Chain & Operations",
+      "Cargo owners",
+      "Boat operators",
+      "Logistics companies",
+      "Inland waterway service providers",
+      "increase utilization of Kerala waterways",
+      "enable sustainable logistics",
+      "clear project title",
+      "concise project description",
+      "problem → ideation → artifact progression",
+      "GitHub repository",
+      "working software artifact",
+      "project presentation",
+      "project documentation",
+      "clean submission readiness",
+      "20% working end-to-end prototype",
+      "20% AI/technical depth",
+      "15% direct challenge alignment",
+      "15% innovation/differentiation",
+      "10% real-world feasibility",
+      "10% measurable impact",
+      "5% demo/presentation quality",
+      "5% scalability/business viability"
+    ]
+  },
+  {
+    "number": 2,
+    "title": "FUNDAMENTAL PRODUCT PRINCIPLE",
+    "features": [
+      "vessel capacity",
+      "water depth",
+      "bridge clearance",
+      "vessel draft",
+      "terminal handling limits",
+      "hazardous cargo compatibility",
+      "cargo weight constraints",
+      "legal/compliance validity",
+      "optimization math",
+      "financial totals"
+    ]
+  },
+  {
+    "number": 3,
+    "title": "TECHNOLOGY STACK",
+    "features": [
+      "React",
+      "TypeScript",
+      "Vite",
+      "responsive UI",
+      "Leaflet + OpenStreetMap for maps",
+      "Recharts or equivalent for charts",
+      "no unnecessary heavy UI framework unless justified",
+      "Python",
+      "FastAPI",
+      "Pydantic",
+      "SQLAlchemy",
+      "SQLite for hackathon/demo",
+      "database abstraction must allow later PostgreSQL migration",
+      "Google OR-Tools",
+      "graph-based route model",
+      "Dijkstra or A* for waterway routing where appropriate",
+      "an LLM provider when an API key is configured",
+      "deterministic/local demo fallback when API is unavailable",
+      "support audio upload/recording",
+      "design for Malayalam speech",
+      "local or configurable speech-to-text provider",
+      "if live transcription dependencies are unavailable, implement a deterministic demo transcript fallback so the live demo cannot fail",
+      "support PDF/document upload",
+      "extract text from text-based PDFs",
+      "support AI structured extraction",
+      "design multimodal/image-document support through provider abstraction",
+      "never silently invent missing fields",
+      "Git repository from the beginning",
+      "clean commit-ready structure",
+      ".gitignore",
+      ".env.example",
+      "reproducible setup"
+    ]
+  },
+  {
+    "number": 4,
+    "title": "REPOSITORY STRUCTURE",
+    "features": []
+  },
+  {
+    "number": 5,
+    "title": "ROLE-BASED WORKSPACES",
+    "features": [],
+    "roles": [
+      {
+        "letter": "A",
+        "title": "SHIPPER PROCUREMENT / COMMERCIAL",
+        "features": [
+          "create cargo manually",
+          "type cargo request in natural language",
+          "upload purchase order",
+          "upload invoice",
+          "upload BOQ",
+          "spreadsheet/bulk upload architecture",
+          "AI extraction into structured cargo data",
+          "review and confirm extracted fields",
+          "request quote",
+          "road vs water vs hybrid comparison",
+          "door-to-door total landed cost",
+          "ETA",
+          "delivery-window feasibility",
+          "carbon comparison",
+          "operator reliability",
+          "mode recommendation",
+          "preferred operators",
+          "historical rate view",
+          "approve booking",
+          "recurring capacity contract architecture",
+          "shipment history"
+        ]
+      },
+      {
+        "letter": "B",
+        "title": "SHIPPER OPERATIONS / DISPATCH",
+        "features": [
+          "shipment timeline",
+          "first-mile truck assignment",
+          "origin terminal",
+          "terminal time slot",
+          "vessel assignment",
+          "cargo readiness",
+          "loading status",
+          "live/demo tracking",
+          "ETA",
+          "delay alerts",
+          "rescheduling",
+          "replacement vessel workflow",
+          "alternative terminal",
+          "road fallback",
+          "exception recovery",
+          "proof of handover"
+        ]
+      },
+      {
+        "letter": "C",
+        "title": "WAREHOUSE / LOADING SUPERVISOR",
+        "features": [
+          "upcoming loads",
+          "packing status",
+          "actual weight",
+          "volume verification",
+          "cargo labels / QR architecture",
+          "loading sequence",
+          "loading equipment requirement",
+          "cargo compatibility",
+          "damage photos",
+          "gate-out",
+          "handover confirmation"
+        ]
+      },
+      {
+        "letter": "D",
+        "title": "CONSIGNEE / RECEIVER",
+        "features": [
+          "incoming shipments",
+          "ETA",
+          "unloading window",
+          "delivery status",
+          "proof of delivery",
+          "OTP/signature architecture",
+          "quantity discrepancy",
+          "damage report",
+          "photo evidence",
+          "delivery documentation"
+        ]
+      },
+      {
+        "letter": "E",
+        "title": "VESSEL OWNER / COMMERCIAL OPERATOR",
+        "features": [
+          "vessel profile",
+          "vessel availability",
+          "available capacity",
+          "booking opportunities",
+          "AI cargo recommendations",
+          "current utilization",
+          "projected utilization",
+          "revenue",
+          "quote management",
+          "backhaul opportunities",
+          "return-load opportunities",
+          "scheduled service participation",
+          "reliability metrics",
+          "payment/settlement visibility",
+          "demand heatmap",
+          "rate benchmark"
+        ]
+      },
+      {
+        "letter": "F",
+        "title": "FLEET DISPATCHER",
+        "features": [
+          "vessel fleet map",
+          "vessel states: AVAILABLE LOADING SAILING UNLOADING MAINTENANCE",
+          "assign vessel",
+          "assign crew architecture",
+          "schedule optimizer",
+          "booking conflicts",
+          "empty-leg reduction",
+          "vessel repositioning",
+          "terminal synchronization",
+          "route alerts",
+          "replacement vessel",
+          "operational control board"
+        ]
+      },
+      {
+        "letter": "G",
+        "title": "CAPTAIN / VESSEL MASTER",
+        "features": [
+          "current voyage",
+          "cargo manifest",
+          "approved route",
+          "route restrictions",
+          "departure time",
+          "ETA",
+          "terminal instructions",
+          "bridge/lock/route constraints",
+          "weather field architecture",
+          "incident report",
+          "departure confirmation",
+          "arrival confirmation",
+          "position update",
+          "navigation notices",
+          "offline-friendly design"
+        ]
+      },
+      {
+        "letter": "H",
+        "title": "TERMINAL / JETTY OPERATOR",
+        "features": [
+          "berth/jetty calendar",
+          "vessel arrival queue",
+          "loading slots",
+          "unloading slots",
+          "equipment allocation",
+          "storage availability",
+          "truck appointments",
+          "gate status",
+          "handling completion",
+          "terminal delay",
+          "terminal charges",
+          "operational status"
+        ]
+      },
+      {
+        "letter": "I",
+        "title": "LOGISTICS COMPANY / 3PL CONTROL TOWER",
+        "features": [
+          "all active shipments",
+          "on-track",
+          "at-risk",
+          "delayed",
+          "intervention-required",
+          "bulk shipment management",
+          "vessel allocation",
+          "carrier/operator scorecards",
+          "cost analytics",
+          "SLA analytics",
+          "exception queue",
+          "multimodal planning",
+          "cargo pooling overview",
+          "network view"
+        ]
+      },
+      {
+        "letter": "J",
+        "title": "FINANCE / SETTLEMENT",
+        "features": [
+          "quote",
+          "accepted rate",
+          "first-mile charges",
+          "terminal charges",
+          "water freight",
+          "waiting charges",
+          "last-mile charges",
+          "invoice",
+          "payment status",
+          "operator payout",
+          "escrow architecture",
+          "dispute record",
+          "settlement history"
+        ]
+      },
+      {
+        "letter": "K",
+        "title": "COMPLIANCE / SAFETY",
+        "features": [
+          "vessel registration",
+          "insurance",
+          "document expiry",
+          "operator verification",
+          "cargo restrictions",
+          "dangerous-goods compatibility",
+          "pre-voyage checklist",
+          "compliance PASS/FAIL",
+          "audit trail"
+        ]
+      },
+      {
+        "letter": "L",
+        "title": "MAINTENANCE",
+        "features": [
+          "vessel maintenance state",
+          "defect report",
+          "inspection",
+          "downtime",
+          "return-to-service",
+          "maintenance due date",
+          "bookable vessel must pass maintenance availability"
+        ]
+      },
+      {
+        "letter": "M",
+        "title": "WATERWAY / NETWORK CONTROL",
+        "features": [
+          "waterway map",
+          "segments",
+          "operational restrictions",
+          "lock status architecture",
+          "depth records",
+          "obstruction reports",
+          "terminal status",
+          "route closure",
+          "navigation alerts",
+          "traffic",
+          "demand heatmap",
+          "infrastructure observations"
+        ]
+      },
+      {
+        "letter": "N",
+        "title": "GOVERNMENT / POLICY ANALYTICS",
+        "features": [
+          "cargo shifted from road to water",
+          "estimated truck trips avoided",
+          "estimated CO2 avoided",
+          "vessel utilization before/after",
+          "backhaul matches",
+          "corridor demand",
+          "failed searches",
+          "unmatched cargo demand",
+          "capacity gaps",
+          "terminal utilization",
+          "modal-shift opportunities",
+          "terminal activation intelligence",
+          "infrastructure priority insights"
+        ]
+      },
+      {
+        "letter": "O",
+        "title": "PLATFORM ADMIN / TRUST",
+        "features": [
+          "organization/user management",
+          "role management",
+          "verification",
+          "audit logs",
+          "dispute administration",
+          "model/provider status",
+          "seed/demo data management"
+        ]
+      }
+    ]
+  },
+  {
+    "number": 6,
+    "title": "MULTI-TENANCY AND RBAC",
+    "features": [
+      "shipper",
+      "operator",
+      "logistics/3PL",
+      "terminal operator",
+      "authority",
+      "government"
+    ]
+  },
+  {
+    "number": 7,
+    "title": "DOMAIN ENTITIES / DATABASE",
+    "features": [
+      "Organization",
+      "User",
+      "Role",
+      "CargoRequest",
+      "CargoDocument",
+      "CargoPreference",
+      "Vessel",
+      "VesselAvailability",
+      "VesselCertificate",
+      "VesselMaintenanceStatus",
+      "WaterwayNode",
+      "WaterwaySegment",
+      "RouteRestriction",
+      "NavigationReport",
+      "Terminal",
+      "TerminalCapability",
+      "TerminalSlot",
+      "TransportQuote",
+      "MatchRecommendation",
+      "PoolingGroup",
+      "BackhaulOpportunity",
+      "ScheduledService",
+      "ScheduledServiceStop",
+      "ScheduledCapacityBooking",
+      "Booking",
+      "Shipment",
+      "ShipmentLeg",
+      "TrackingEvent",
+      "InvoiceRecord",
+      "PaymentRecord",
+      "ComplianceCheck",
+      "ImpactMetric",
+      "AuditEvent",
+      "id",
+      "cargo_type",
+      "weight_tonnes",
+      "volume_m3",
+      "packaging",
+      "fragile",
+      "perishable",
+      "hazardous",
+      "temperature_control_required",
+      "origin",
+      "destination",
+      "origin coordinates if known",
+      "destination coordinates if known",
+      "ready_time",
+      "delivery_deadline",
+      "first_mile_required",
+      "last_mile_required",
+      "consolidation_allowed",
+      "prohibited_co_load_categories",
+      "budget",
+      "priority",
+      "id",
+      "name",
+      "operator",
+      "vessel_type",
+      "max_capacity_tonnes",
+      "max_volume_m3",
+      "length",
+      "beam",
+      "loaded_draft",
+      "air_draft",
+      "current_location",
+      "cargo_categories",
+      "maintenance_status",
+      "compliance_status",
+      "reliability_score",
+      "source_node",
+      "destination_node",
+      "distance",
+      "available_depth",
+      "minimum_width",
+      "minimum_bridge_clearance",
+      "lock_required",
+      "lock_name",
+      "navigation_status",
+      "restriction",
+      "source_name",
+      "source_date",
+      "confidence",
+      "last_verified",
+      "terminal",
+      "cargo_types",
+      "jetty_length",
+      "available_storage",
+      "covered_storage",
+      "crane_available",
+      "crane_capacity",
+      "forklift_available",
+      "forklift_capacity",
+      "road_access",
+      "approach_channel",
+      "operational_status"
+    ]
+  },
+  {
+    "number": 8,
+    "title": "KERALA / NW-3 DEMO DATA",
+    "features": [
+      "NW-3 is approximately 205 km overall",
+      "it includes the West Coast Canal and major connecting canals",
+      "the system is tidally influenced",
+      "lock gates exist at Thanneermukkom and Thrikunnapuzha",
+      "route geometry/depth/clearance is not conceptually uniform",
+      "terminals including Maradu, Vaikom, Thanneermukkom and Alappuzha are useful demonstration points",
+      "source-grounded data",
+      "prototype assumptions",
+      "synthetic/demo values",
+      "live integrations not yet connected"
+    ]
+  },
+  {
+    "number": 9,
+    "title": "MULTIMODAL SHIPPER INTAKE",
+    "features": [
+      "natural-language text",
+      "PDF",
+      "invoice",
+      "purchase order",
+      "BOQ",
+      "future spreadsheet support \"cargo_type\": \"cement\", \"weight_tonnes\": 80, \"volume_m3\": null, \"packaging\": \"bagged\", \"origin\": \"Kalamassery\", \"destination\": \"Alappuzha\", \"delivery_deadline\": \"...\", \"fragile\": false, \"hazardous\": false, \"confidence\": { ... }, \"missing_fields\": [...]"
+    ]
+  },
+  {
+    "number": 10,
+    "title": "MALAYALAM VOICE VESSEL INTAKE",
+    "features": [
+      "compatible cargo",
+      "potential pooled cargo",
+      "possible backhaul",
+      "projected utilization",
+      "potential revenue"
+    ]
+  },
+  {
+    "number": 11,
+    "title": "AGENTIC BROKER",
+    "features": [
+      "parse_cargo_document()",
+      "parse_cargo_text()",
+      "parse_vessel_voice()",
+      "get_cargo()",
+      "get_vessel()",
+      "get_terminal()",
+      "get_route_data()",
+      "find_candidate_vessels()",
+      "check_vessel_capacity()",
+      "check_cargo_compatibility()",
+      "check_waterway_feasibility()",
+      "check_terminal_feasibility()",
+      "check_compliance()",
+      "rank_matches()",
+      "optimize_load_pool()",
+      "find_backhaul()",
+      "choose_origin_terminal()",
+      "choose_destination_terminal()",
+      "compare_transport_modes()",
+      "find_scheduled_services()",
+      "propose_scheduled_service()",
+      "request_quote()",
+      "create_booking()",
+      "generate_manifest()",
+      "generate_transport_instruction()",
+      "get_tracking_status()",
+      "replan_shipment()",
+      "calculate_impact()",
+      "determine which tool to call",
+      "interpret user requests",
+      "summarize results",
+      "explain recommendations",
+      "translate Malayalam/English"
+    ]
+  },
+  {
+    "number": 12,
+    "title": "HARD FEASIBILITY ENGINE",
+    "features": []
+  },
+  {
+    "number": 13,
+    "title": "SMART MATCHING",
+    "features": [
+      "capacity fit",
+      "route compatibility",
+      "schedule fit",
+      "total cost",
+      "operator reliability",
+      "utilization improvement",
+      "backhaul opportunity",
+      "carbon impact"
+    ]
+  },
+  {
+    "number": 14,
+    "title": "LOAD POOLING",
+    "features": [
+      "maximize utilization",
+      "maximize compatible revenue",
+      "minimize route deviation",
+      "minimize handling complexity",
+      "satisfy deadlines",
+      "obey co-load constraints"
+    ]
+  },
+  {
+    "number": 15,
+    "title": "BACKHAUL / EMPTY RETURN OPTIMIZER",
+    "features": [
+      "available departure window",
+      "route",
+      "cargo compatibility",
+      "capacity",
+      "revenue",
+      "schedule"
+    ]
+  },
+  {
+    "number": 16,
+    "title": "TERMINAL SELECTION OPTIMIZER",
+    "features": [
+      "first-mile distance/cost",
+      "terminal capability",
+      "terminal waiting",
+      "handling cost",
+      "vessel feasibility",
+      "waterway distance",
+      "destination handling",
+      "last-mile distance/cost",
+      "deadline"
+    ]
+  },
+  {
+    "number": 17,
+    "title": "ROAD vs WATER vs HYBRID PLANNER",
+    "features": [
+      "total cost",
+      "ETA",
+      "number of handoffs",
+      "SLA feasibility",
+      "reliability/risk",
+      "CO2 estimate"
+    ]
+  },
+  {
+    "number": 18,
+    "title": "CARBON CALCULATOR",
+    "features": []
+  },
+  {
+    "number": 19,
+    "title": "SCHEDULED CARGO SERVICE PLANNER",
+    "features": []
+  },
+  {
+    "number": 20,
+    "title": "QUOTE MARKETPLACE / RISK-ADJUSTED PROCUREMENT",
+    "features": [
+      "price",
+      "reliability",
+      "cancellation rate",
+      "feasibility",
+      "ETA",
+      "total value/risk"
+    ]
+  },
+  {
+    "number": 21,
+    "title": "CORRIDOR RELIABILITY",
+    "features": [
+      "average/median journey duration",
+      "terminal wait",
+      "successful deliveries",
+      "cancellation",
+      "incident count",
+      "on-time rate"
+    ]
+  },
+  {
+    "number": 22,
+    "title": "BOOKING RISK SCORE",
+    "features": [
+      "operator reliability",
+      "schedule slack",
+      "terminal status",
+      "route restrictions",
+      "weather placeholder/provider",
+      "cargo complexity"
+    ]
+  },
+  {
+    "number": 23,
+    "title": "BOOKING + SHIPMENT STATE MACHINE",
+    "features": []
+  },
+  {
+    "number": 24,
+    "title": "EXCEPTION RECOVERY",
+    "features": []
+  },
+  {
+    "number": 25,
+    "title": "WATERWAY CROWD REPORTING",
+    "features": [
+      "aquatic vegetation",
+      "shallow section",
+      "fishing obstruction",
+      "debris",
+      "terminal delay",
+      "navigation hazard",
+      "location",
+      "type",
+      "time",
+      "reporter",
+      "confidence",
+      "verification status",
+      "expiry"
+    ]
+  },
+  {
+    "number": 26,
+    "title": "FLOOD / RESILIENCE MODE",
+    "features": [
+      "specified road corridor can become unavailable/high risk",
+      "critical cargo can receive priority",
+      "system attempts available water/hybrid plans",
+      "authority dashboard shows emergency allocation"
+    ]
+  },
+  {
+    "number": 27,
+    "title": "MODAL-SHIFT OPPORTUNITY ENGINE",
+    "features": [
+      "tonnage",
+      "urgency",
+      "cargo type",
+      "origin proximity",
+      "destination proximity",
+      "handling requirements",
+      "waterway availability",
+      "frequency"
+    ]
+  },
+  {
+    "number": 28,
+    "title": "FAILED-MATCH INTELLIGENCE",
+    "features": []
+  },
+  {
+    "number": 29,
+    "title": "TERMINAL ACTIVATION INTELLIGENCE",
+    "features": [
+      "nearby cargo demand",
+      "available vessel supply",
+      "handling capability",
+      "road connectivity data/placeholder",
+      "current platform utilization",
+      "failed-match demand"
+    ]
+  },
+  {
+    "number": 30,
+    "title": "GOVERNMENT / IMPACT METRICS",
+    "features": [
+      "road baseline cost",
+      "chosen plan cost",
+      "road baseline emissions estimate",
+      "chosen plan emissions estimate",
+      "baseline truck movements",
+      "vessel utilization before",
+      "vessel utilization after",
+      "empty return avoided",
+      "tonnes shifted to water"
+    ]
+  },
+  {
+    "number": 31,
+    "title": "TRACKING",
+    "features": [
+      "vessel position",
+      "shipment progress",
+      "milestone tracking",
+      "ETA",
+      "status timeline"
+    ]
+  },
+  {
+    "number": 32,
+    "title": "DOCUMENT GENERATION",
+    "features": [
+      "booking confirmation",
+      "cargo manifest",
+      "loading sheet",
+      "transport instruction",
+      "delivery note",
+      "invoice draft",
+      "proof-of-delivery record"
+    ]
+  },
+  {
+    "number": 33,
+    "title": "TRUST / OPERATOR RELIABILITY",
+    "features": []
+  },
+  {
+    "number": 34,
+    "title": "DEMO MODE",
+    "features": [
+      "cargo",
+      "vessels",
+      "routes",
+      "terminals",
+      "restrictions",
+      "quotes",
+      "scheduled services",
+      "tracking events"
+    ]
+  },
+  {
+    "number": 35,
+    "title": "HERO DEMO DATA",
+    "features": [
+      "voice extraction",
+      "document/text extraction",
+      "multiple vessel candidates",
+      "one attractive candidate failing hard feasibility",
+      "another candidate passing",
+      "road/water/hybrid comparison",
+      "load pooling raising utilization to approximately 90%+",
+      "return cargo opportunity",
+      "booking",
+      "tracking",
+      "impact calculation"
+    ]
+  },
+  {
+    "number": 36,
+    "title": "UI / UX",
+    "features": [
+      "clean enterprise layout",
+      "readable typography",
+      "responsive design",
+      "map-heavy operational screens",
+      "clear state/status indicators",
+      "meaningful empty states",
+      "loading/error handling",
+      "accessible forms",
+      "mobile-first captain/operator voice experience",
+      "excessive animations",
+      "fake AI gradients everywhere",
+      "unnecessary landing-page sections",
+      "giant marketing pages before the actual application",
+      "login screens consuming demo time"
+    ]
+  },
+  {
+    "number": 37,
+    "title": "SHIPPER HERO SCREEN",
+    "features": []
+  },
+  {
+    "number": 38,
+    "title": "OPERATOR HERO SCREEN",
+    "features": []
+  },
+  {
+    "number": 39,
+    "title": "GOVERNMENT HERO SCREEN",
+    "features": []
+  },
+  {
+    "number": 40,
+    "title": "SECURITY / PRIVACY",
+    "features": [
+      "environment variables",
+      "no hard-coded secrets",
+      "input validation",
+      "upload size/type restrictions",
+      "sanitized filenames",
+      "safe document processing",
+      "backend authorization architecture",
+      "audit events",
+      "basic CORS configuration",
+      "no arbitrary file execution",
+      "error messages without secret leakage"
+    ]
+  },
+  {
+    "number": 41,
+    "title": "TESTING",
+    "features": []
+  },
+  {
+    "number": 42,
+    "title": "OBSERVABILITY",
+    "features": []
+  },
+  {
+    "number": 43,
+    "title": "DEVELOPMENT ORDER",
+    "features": []
+  },
+  {
+    "number": 44,
+    "title": "P0 / P1 / P2 PRIORITIES",
+    "features": [
+      "cargo creation",
+      "vessel availability",
+      "document/text intake",
+      "Malayalam voice demo intake",
+      "route feasibility",
+      "terminal feasibility",
+      "smart matching",
+      "road/water/hybrid comparison",
+      "booking",
+      "shipment state",
+      "load pooling",
+      "backhaul",
+      "terminal optimization",
+      "scheduled cargo services",
+      "tracking",
+      "impact calculator",
+      "government demand heatmap",
+      "control tower",
+      "exception recovery",
+      "failed-match intelligence",
+      "corridor reliability",
+      "booking risk",
+      "rate benchmarking",
+      "modal-shift advisor",
+      "flood mode",
+      "crowd navigation reporting",
+      "terminal activation scoring",
+      "full WhatsApp Business integration",
+      "production payment integration",
+      "insurance provider integration",
+      "advanced predictive maintenance",
+      "cold-chain IoT",
+      "external government workflow integrations"
+    ]
+  },
+  {
+    "number": 45,
+    "title": "NO FAKE AI RULE",
+    "features": [
+      "multimodal document understanding",
+      "multilingual natural-language understanding",
+      "Malayalam voice understanding",
+      "agent/tool orchestration",
+      "optional explanation generation",
+      "OR-Tools cargo pooling",
+      "backhaul search",
+      "terminal selection",
+      "scheduled capacity planning"
+    ]
+  },
+  {
+    "number": 46,
+    "title": "PROVENANCE / EXPLAINABILITY",
+    "features": [
+      "capacity fit 98%",
+      "route feasible",
+      "schedule fit 94%",
+      "projected utilization 91%",
+      "reliability 96%",
+      "lower delivered cost",
+      "source type",
+      "data freshness where applicable",
+      "demo/simulated label when applicable"
+    ]
+  },
+  {
+    "number": 47,
+    "title": "GITHUB QUALITY",
+    "features": [
+      "meaningful folder structure",
+      "no secrets",
+      "no junk files",
+      "no final2.py / testfinal.py style filenames",
+      "README",
+      "setup instructions",
+      "architecture",
+      "API documentation",
+      "screenshots if possible",
+      "demo instructions",
+      "assumptions",
+      "data provenance",
+      "tests",
+      "known limitations",
+      "roadmap"
+    ]
+  },
+  {
+    "number": 48,
+    "title": "REQUIRED DOCUMENTATION FILES",
+    "features": [
+      "system architecture",
+      "role architecture",
+      "data flow",
+      "agent/tool architecture",
+      "what uses LLM",
+      "what uses deterministic constraints",
+      "what uses OR-Tools",
+      "why this separation prevents hallucination",
+      "real/source-grounded",
+      "simulated",
+      "assumptions",
+      "external integrations"
+    ]
+  },
+  {
+    "number": 49,
+    "title": "HACKATHON_SUBMISSION.md",
+    "features": []
+  },
+  {
+    "number": 50,
+    "title": "PROJECT PRESENTATION OUTLINE",
+    "features": []
+  },
+  {
+    "number": 51,
+    "title": "THREE-MINUTE DEMO SCRIPT",
+    "features": []
+  },
+  {
+    "number": 52,
+    "title": "JUDGE-FACING EXPLANATIONS",
+    "features": []
+  },
+  {
+    "number": 53,
+    "title": "PERFORMANCE / DEMO RELIABILITY",
+    "features": [
+      "one-command or two-command startup",
+      "clear setup instructions",
+      "seed database command",
+      "demo reset command",
+      "no dependency on external API for the main deterministic workflow",
+      "graceful LLM/provider failure",
+      "graceful map/network failure where possible",
+      "obvious error messages",
+      "no long blocking operations in UI",
+      "pre-load demo fixtures"
+    ]
+  },
+  {
+    "number": 54,
+    "title": "DEFINITION OF DONE",
+    "features": []
+  },
+  {
+    "number": 55,
+    "title": "YOUR WORKING BEHAVIOR",
+    "features": []
+  },
+  {
+    "number": 56,
+    "title": "FIRST ACTION",
+    "features": []
+  }
+]

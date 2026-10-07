@@ -16,7 +16,7 @@
 
 **What happens when water isn't best?** Feasible modes compete on full delivered cost and deadlines. Urgent cargo tests demonstrate road winning. Direct water does not omit pickup/last-mile costs; those are included in hybrid.
 
-**What is optimized?** CP-SAT selects compatible binary load memberships under integer weight/volume, terminal-corridor and deadline constraints. Backhaul searches reverse availability. Terminal pairs and scheduled-service segment capacity are evaluated deterministically. We do not claim a trained ML optimizer.
+**What is optimized?** CP-SAT selects compatible pools and multi-vessel cargo assignments under capacity, volume, corridor and deadline constraints. Fleet assignment permits one voyage per vessel, serves feasible tonnage first, then applies the selected objective. Backhaul searches reverse availability; terminal pairs/resources, dated services and contract segment holds are deterministic. No trained ML optimizer or full multi-tour VRP is claimed.
 
 **How do you make money?** Possible transaction fee, operator subscription, 3PL enterprise SaaS and scheduled-service analytics. The demo payment states do not transfer money; commercial viability needs a pilot.
 
@@ -24,6 +24,12 @@
 
 **What about dangerous goods?** They are a compliance validation problem. Vessel category/certification, verified dangerous-goods certificate and compatible terminals must pass. Synthetic verification is not a legal endorsement; real deployment needs applicable authorized review.
 
-**Can you handle disruptions?** Pre-departure cancellation/closure triggers revalidation and alternative plans. Users approve consequential recovery. Mid-voyage intervention and coordinated whole-pool recovery require further operational design.
+**Can you handle disruptions?** Eight pre-departure types include equipment failure, late trucks, cargo readiness, cancelled services and reduced capacity. Revalidated later/terminal/service/vessel/road options expose SLA/cost/ETA deltas, and users can approve an entire pool atomically. Mid-voyage intervention and split loads remain roadmap.
 
-**How do we reproduce the numbers?** Reset, pool and book the fixture, then inspect government metrics; or run scripts/measure_demo.py. A blank transaction set reports zero shifted tonnes/impact. Return suggestions do not count as avoided empty voyages until actually booked.
+**How do we reproduce the numbers?** Reset, pool and book, then inspect government metrics; or run scripts/generate_measured_results.py. The hero computes 138 t/92%, ₹27,857.40 pooled cost difference, 723.66 kg estimated CO₂ difference and seven equivalent long-haul movements. Inputs/factors are synthetic; an empty transaction set reports zero impact. Return suggestions count only after booking.
+
+**Is everything in the large specification done?** No production-completeness claim is made. FEATURE_AUDIT.md preserves all 56 master sections, individual role features, 647 listed requirements and all continuation phases with implementation sources. Preferred-operator management, negotiation, some secondary dashboards, split/mid-voyage recovery and production integrations remain partial/roadmap. The continuation's highest-value prototype work and final local verification are documented.
+
+**Does document recognition work offline?** Actual local ONNX OCR handles the generated English scanned PDF/PNG; text PDFs are attempted first. Invoice/PO/BOQ fields are reviewed, not legal/accounting interpretation. Timeouts, page/pixel limits, confidence caveats and missing fields are visible. XLSX import also works locally and never evaluates formulas.
+
+**Is delivery legally verified?** Local demo OTP records receiver identity, expiry and single-use verification; requesting it gates delivery. Preserved milestone-only deliveries remain unverified. Photo/name/quantity records are prototype evidence, not a legal digital signature or connected SMS service.

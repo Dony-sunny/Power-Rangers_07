@@ -13,6 +13,10 @@ Reviewed 7 October 2026 for the local hackathon prototype.
 - Booking approval and recovery approval are explicit. SQLite capacity checks/writes are serialized; duplicate bookings and service overcapacity are rejected. Invalid shipment transitions are rejected.
 - CORS defaults to the two localhost frontend origins. Responses have `nosniff` and `no-store`. Generic unexpected errors avoid secret leakage. Local services bind to 127.0.0.1.
 - Structured audits record entity/event/actor and safe details; uploaded document text and credentials are not logged.
+- XLSX validates decompressed size, sheet/row/column limits and rejects formulas, macros/external links and duplicate mapped headers. Valid-only import is scoped, expiring, explicitly approved and protected from reuse; all rows commit together. Error-report cells are sanitized against spreadsheet formula injection.
+- OCR/text PDF processing runs fixed application modules in subprocesses with timeouts; byte/page/pixel limits are enforced. Canonical private JPEG evidence strips EXIF. Photo access, QR creation/resolve and OTP issuance enforce assigned-record scope. Opaque QR IDs are 128-bit random references and confer no access.
+- OTP stores a salted scrypt hash, five-minute expiry, receiver identity, five-attempt limit, issuance cooldown/rate cap and single-use completion. Local code is returned only in demo mode; no reusable code is retained in plaintext. Once requested, verification gates delivery; preserved milestone-only demo delivery is explicitly unverified.
+- Admin role changes use stored roles, disabled users lose access, and the active admin cannot disable/demote itself. Browser role switching is visible only in demo mode. Capacity holds, fleet approvals, terminal resources and whole-pool recovery revalidate within transactions.
 
 ## Verification
 
@@ -23,3 +27,9 @@ Integration tests exercise tenant boundaries, captain commercial redaction, rest
 Demo role switching is intentionally not authentication. Do not publish a demo-mode instance with sensitive data. Real deployment needs a managed identity provider, identity provisioning/revocation, HTTPS, per-organization policy administration, rate limiting, CSRF considerations where cookie identity is added, storage encryption/retention/deletion, file malware/OCR isolation and PDF resource-limits in a separate worker. A page-count/byte limit is not a full PDF decompression-bomb defense. The bearer abstraction is a prototype gateway boundary, not full SSO.
 
 Real navigation, dangerous-goods certification and compliance cannot be established by seeded records or an LLM. Registered-vessel evidence and official operational sources must be validated before deployment. Payment states do not move real money. Data packages do not issue official tax/regulatory documents.
+
+## Production identity provider boundary
+
+`IdentityProvider.verify_token` in `backend/services/connectors.py` is the future OIDC/OAuth2/enterprise SSO verification contract. A production adapter must verify issuer/audience/signature/expiry against trusted keys, reject replay where applicable, map immutable subjects to stored users and recheck disabled status/stored roles on every request. A client role header/claim must never grant authority. Provisioning, key rotation, logout/revocation, tenant invitations and audit retention need a managed identity deployment and tests; no public token-minting endpoint or fake SSO was added.
+
+Photos in database JSON/text are prototype storage. Production requires private object storage, encryption, signed authorized retrieval, retention/deletion, upload quotas and malware/resource-isolated processing. Cross-worker PostgreSQL locking is an explicit migration requirement. See [Migration](POSTGRESQL_MIGRATION.md) and [Publication review](GITHUB_PUBLICATION.md).
