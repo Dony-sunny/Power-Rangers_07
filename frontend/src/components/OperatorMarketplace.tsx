@@ -547,7 +547,9 @@ export default function OperatorMarketplace({
               <p>
                 {search
                   ? "Clear the search or try another boat."
-                  : "Publish your available dates so cargo owners can request a departure."}
+                  : ownListings.some((a) => (!boatId || a.vessel_id === boatId) && a.active)
+                    ? `Your boat’s available dates are published and active in the marketplace! Waiting for a cargo owner to choose ${boatId ? data.vessels.find((v: Data) => v.id === boatId)?.name || "your boat" : "your boat"} and submit a departure request.`
+                    : "Publish your available dates so cargo owners can discover your boat and request a departure."}
               </p>
               {boatId && voyages.length > 0 && (
                 <div style={{ margin: "14px 0", padding: "12px", background: "#edf5ef", borderRadius: "8px" }}>
@@ -569,7 +571,17 @@ export default function OperatorMarketplace({
                     Clear search
                   </button>
                 )}
-                <button className="button market-yellow" onClick={() => list()}>
+                {ownListings.some((a) => (!boatId || a.vessel_id === boatId) && a.active) && switchRole && (
+                  <button
+                    type="button"
+                    className="button market-yellow"
+                    onClick={() => switchRole("shipper")}
+                  >
+                    Switch to Cargo owner to book this boat
+                    <ArrowRight size={16} />
+                  </button>
+                )}
+                <button className="button" onClick={() => list()}>
                   List boat availability
                   <ArrowRight size={16} />
                 </button>
