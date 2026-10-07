@@ -13,5 +13,6 @@ frontend/dist/
 test-results/
 playwright-report/
 *.log
-.runtime/
+.runtime/x1
 !data/demo/*.pdf
+agent.md
