@@ -51,7 +51,7 @@ def generate():
         cargo, vessel = db.get(CargoRequest, "hero-cargo"), db.get(Vessel, "vembanad")
         shipper, control = db.get(User, "demo-shipper"), db.get(User, "demo-control")
         matched = match(db, cargo, persist=True, actor=shipper)
-        cost_advice = advice(cargo.id, vessel.id, True, db, shipper)
+        cost_advice = advice(cargo.id, vessel.id, crossover=True, db=db, actor=shipper)
         existing_58 = build_plan(db, [db.get(CargoRequest, "pool-cargo")], vessel)
         pool = optimize_pool(db, cargo, vessel, organization_id=shipper.organization_id, persist=False)
         backhaul = find_backhaul(db, cargo, vessel)
