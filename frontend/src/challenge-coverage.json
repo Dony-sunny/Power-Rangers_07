@@ -1,0 +1,135 @@
+{
+  "challenge": "Challenge 7: Backwater Cargo Exchange",
+  "event": "IBM x Kerala Government Hackathon 2026",
+  "prototype_status": "Local prototype with sample cargo, synthetic rates and simulated provider responses. External transport services are not connected.",
+  "requirements": [
+    {
+      "id": "cargo-posting",
+      "name": "Cargo posting",
+      "workspace": "shipper",
+      "view": "posting",
+      "behavior": "Cargo owners review and post goods, weight, volume, route, dates and load dimensions. Cargo and its reviewed load profile are saved together so the request is ready for scheduling.",
+      "demo": "Choose Post cargo, enter the details or use the cement sample, review, and confirm. Then compare a boat from the marketplace.",
+      "api": ["POST /api/lines/cargo", "POST /api/cargo"],
+      "source_files": [
+        "frontend/src/components/Intake.tsx",
+        "frontend/src/components/Posting.tsx"
+      ],
+      "test_files": ["frontend/e2e/demo.spec.ts"]
+    },
+    {
+      "id": "boat-availability",
+      "name": "Boat availability listing",
+      "workspace": "operator",
+      "view": "overview",
+      "behavior": "Boat operators register a new boat and publish its first availability in one transaction, or list an existing boat. My boats supports editing, pausing and republishing unbooked windows. Reserved windows stay protected. Demo certificate review is explicit and simulated; unverified boats remain unavailable for booking.",
+      "demo": "Open Boat operator → My boats → Add a new boat, review actual measurements and dates, and explicitly choose simulated certificate review for a bookable demo boat. Manage availability from My boats. Cargo requests allows the owning operator to accept approved quotes, including a reviewed estimated shortfall.",
+      "api": [
+        "POST /api/vessels/with-availability",
+        "POST /api/availability",
+        "PUT /api/availability/{availability_id}",
+        "POST /api/availability/{availability_id}/visibility"
+      ],
+      "source_files": [
+        "frontend/src/components/Intake.tsx",
+        "frontend/src/components/CargoLines.tsx",
+        "frontend/src/components/Marketplace.tsx",
+        "frontend/src/components/AvailabilityPosting.tsx",
+        "frontend/src/components/OperatorMarketplace.tsx",
+        "frontend/src/components/BoatRegistration.tsx"
+      ],
+      "test_files": [
+        "frontend/e2e/demo.spec.ts",
+        "tests/integration/test_operator_marketplace.py"
+      ]
+    },
+    {
+      "id": "matching",
+      "name": "Matching recommendations",
+      "workspace": "shipper",
+      "view": "overview",
+      "behavior": "Rank suitable boats against cargo, route and safety constraints, and explain rejected boats.",
+      "demo": "Choose the cement sample and Compare delivery costs to see recommended boats and safety exclusions.",
+      "api": ["GET /api/cargo/{id}/matches"],
+      "source_files": [
+        "optimization/matching/engine.py",
+        "frontend/src/components/Marketplace.tsx"
+      ],
+      "test_files": ["frontend/e2e/demo.spec.ts"]
+    },
+    {
+      "id": "scheduling",
+      "name": "Schedule planning",
+      "workspace": "shipper",
+      "view": "overview",
+      "behavior": "Plan a dated departure, combine compatible cargo and collect owner, boat operator and service provider approvals. Users may request a preferred departure time; feasible dates are recalculated and preserved through confirmation.",
+      "demo": "Post a new load (including a small 1-tonne load), compare and choose a boat, review dates and request a departure. Approve the quote, hand off to the correct boat owner, and accept each truck and terminal job in logistics before confirming. Follow milestones and record the cargo receipt. Declined and expired quotes can be replanned.",
+      "api": ["POST /api/lines/proposals"],
+      "source_files": [
+        "backend/services/line_planning.py",
+        "backend/services/cargo_lines.py",
+        "frontend/src/components/LogisticsMarketplace.tsx"
+      ],
+      "test_files": [
+        "tests/integration/test_cargo_lines.py",
+        "frontend/e2e/demo.spec.ts"
+      ]
+    },
+    {
+      "id": "cost-comparison",
+      "name": "Cost comparison",
+      "workspace": "shipper",
+      "view": "overview",
+      "behavior": "Compare road transport with water transport including connecting trucks, terminal charges, arrival time and estimated emissions.",
+      "demo": "Compare delivery costs for the Kochi to Alappuzha cement sample. Expand Itemized delivery price for a breakdown.",
+      "api": ["GET /api/lines/cargo/{id}/advice"],
+      "source_files": ["optimization/multimodal/trip_costs.py"],
+      "test_files": [
+        "tests/unit/test_trip_costs.py",
+        "frontend/e2e/demo.spec.ts"
+      ]
+    },
+    {
+      "id": "impact",
+      "name": "Sustainable logistics and increased waterway use",
+      "workspace": "control",
+      "view": "tracking",
+      "behavior": "Track selected and completed water cargo tonnes and estimate full-delivery CO₂ savings against road transport.",
+      "demo": "In the logistics coordinator workspace, open Delivery & impact after recording delivery receipts.",
+      "api": ["GET /api/lines"],
+      "source_files": [
+        "backend/services/cargo_lines.py",
+        "frontend/src/components/LogisticsMarketplace.tsx"
+      ],
+      "test_files": [
+        "tests/integration/test_cargo_lines.py",
+        "frontend/e2e/demo.spec.ts",
+        "tests/integration/test_marketplace_demo.py"
+      ]
+    }
+  ],
+  "target_users": [
+    {
+      "name": "Cargo owners",
+      "workspace": "Cargo owner / shipper: post cargo, compare transport and approve quotes."
+    },
+    {
+      "name": "Boat operators",
+      "workspace": "Boat operator: list availability and accept reviewed departures."
+    },
+    {
+      "name": "Logistics companies",
+      "workspace": "Logistics coordinator: arrange providers and track deliveries."
+    },
+    {
+      "name": "Inland waterway service providers",
+      "workspace": "Boat availability and coordinated terminal and handling jobs; provider responses are simulated."
+    }
+  ],
+  "limitations": [
+    "Rates, cargo records and emissions factors are synthetic demonstration data.",
+    "Provider responses and transport execution are simulated.",
+    "Emissions are estimates, not certified environmental claims.",
+    "Feature coverage follows the supplied brief; it does not guarantee shortlisting."
+  ]
+}

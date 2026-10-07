@@ -1,6 +1,6 @@
 from sqlalchemy import select
 from backend.models import *
-from backend.auth import GLOBAL_ROLES, COMMERCIAL_ROLES, ROLE_LABELS
+from backend.auth import GLOBAL_ROLES, COMMERCIAL_ROLES, ROLE_LABELS, coordinated_orgs
 from backend.repositories.common import record
 from backend.services.bookings import booking_access
 from fastapi import HTTPException
@@ -9,7 +9,7 @@ from fastapi import HTTPException
 def workspace(db, actor):
     role = actor.role_id
     vessel_query = select(Vessel)
-    if role not in GLOBAL_ROLES and role not in {"shipper", "dispatch"}:
+    if role not in GLOBAL_ROLES and role not in {"shipper", "dispatch", "control"}:
         vessel_query = vessel_query.where(
             Vessel.organization_id == actor.organization_id
         )
@@ -22,7 +22,9 @@ def workspace(db, actor):
                 row.pop(field, None)
         vessel_records.append(row)
     cargo_query = select(CargoRequest).order_by(CargoRequest.created_at.desc())
-    if role not in GLOBAL_ROLES:
+    if role == "control":
+        cargo_query = cargo_query.where(CargoRequest.organization_id.in_(coordinated_orgs(db, actor)))
+    elif role not in GLOBAL_ROLES:
         cargo_query = cargo_query.where(
             CargoRequest.organization_id == actor.organization_id
         )

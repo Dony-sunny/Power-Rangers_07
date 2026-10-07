@@ -1,290 +1,125 @@
-"""Reproduce judge evidence using isolated real services and persisted demo bookings."""
-
+"""Reproduce the three-role Cargo Lines demo in isolated SQLite databases."""
 import json
 import sys
 from pathlib import Path
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import timedelta
 from types import SimpleNamespace
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from sqlalchemy import create_engine
+
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from backend.database import Base
-from backend.models import CargoRequest, Vessel, User
-from backend.repositories.common import record
-from backend.schemas.requests import BookingCreate, RecoveryApproval
-from backend.schemas.extensions import PatternCreate, FleetRequest
-from backend.services.bookings import create_booking
-from backend.services.planning import compare_modes
-from backend.services.impact import calculate_impact
-from backend.services.recovery import disrupt, approve_recovery
-from backend.services.recurring import generate_pattern
-from backend.services.analytics import failed_demand
-from backend.services.timeutils import IST, dt
+from backend.models import CargoRequest, Vessel, User, CargoVoyage, ProviderJob
+from backend.services import cargo_lines as lines
+from backend.services.line_planning import build_plan
+from backend.services.terminal_resources import seed_resources
+from backend.services.timeutils import utcnow, dt
+from backend.api.cargo_lines import advice
 from optimization.matching.engine import match
+from optimization.multimodal.costs import road_plan
+from optimization.multimodal.trip_costs import TERMS
 from optimization.pooling.solver import optimize_pool
 from optimization.backhaul.search import find_backhaul
-from optimization.fleet import optimize_fleet
-from data.seed.network import seed, tomorrow
-
+from data.seed.network import seed
 
 @contextmanager
 def fixture():
     engine = create_engine("sqlite://")
+    @event.listens_for(engine, "connect")
+    def foreign_keys(connection, _):
+        connection.execute("PRAGMA foreign_keys=ON")
     Base.metadata.create_all(engine)
     with sessionmaker(bind=engine, expire_on_commit=False)() as db:
         seed(db)
+        seed_resources(db)
+        db.commit()
         yield db
     engine.dispose()
 
+def accept_and_confirm(db, voyage, operator_user="demo-operator"):
+    shipper, control, operator = [db.get(User, key) for key in ["demo-shipper", "demo-control", operator_user]]
+    for member in lines.members(db, voyage):
+        lines.approve_quote(db, shipper, member.quote_id)
+    lines.operator_response(db, operator, voyage.id, voyage.version, True)
+    for job in lines.jobs(db, voyage):
+        lines.job_response(db, control, job.id, "ACCEPTED")
+    return lines.confirm(db, control, voyage.id)
 
 def generate():
     with fixture() as db:
-        cargo = db.get(CargoRequest, "hero-cargo")
-        vessel = db.get(Vessel, "vembanad")
-        actor = db.get(User, "demo-shipper")
-        matched = match(db, cargo, persist=True, actor=actor)
-        match(
-            db,
-            db.get(CargoRequest, "unserved-cargo"),
-            persist=True,
-            actor=db.get(User, "demo-control"),
-        )
-        modes = compare_modes(db, cargo, vessel.id)
-        terminal_cargo = SimpleNamespace(**record(cargo))
-        terminal_cargo.origin = "Maradu"
-        terminal_cargo.origin_coordinates = [9.946, 76.325]
-        terminal_cargo.first_mile_required = False
-        direct_water = next(
-            plan
-            for plan in compare_modes(db, terminal_cargo, vessel.id)["plans"]
-            if plan["mode"] == "WATER"
-        )
-        urgent = SimpleNamespace(**record(cargo))
-        urgent.delivery_deadline = (
-            dt(cargo.ready_time) + timedelta(hours=4)
-        ).isoformat()
-        road_wins = compare_modes(db, urgent, vessel.id)
-        pool = optimize_pool(db, cargo, vessel, organization_id=actor.organization_id)
+        cargo, vessel = db.get(CargoRequest, "hero-cargo"), db.get(Vessel, "vembanad")
+        shipper, control = db.get(User, "demo-shipper"), db.get(User, "demo-control")
+        matched = match(db, cargo, persist=True, actor=shipper)
+        cost_advice = advice(cargo.id, vessel.id, True, db, shipper)
+        existing_58 = build_plan(db, [db.get(CargoRequest, "pool-cargo")], vessel)
+        pool = optimize_pool(db, cargo, vessel, organization_id=shipper.organization_id, persist=False)
         backhaul = find_backhaul(db, cargo, vessel)
-        booked = create_booking(
-            db,
-            actor,
-            BookingCreate(
-                cargo_id=cargo.id,
-                vessel_id=vessel.id,
-                mode="HYBRID",
-                pool_id=pool["pool"]["id"],
-                approved=True,
-            ),
-        )
-        impact = calculate_impact(db)
-        unserved = failed_demand(db)
-        road = modes["plans"][0]
-        hybrid = modes["plans"][2]
+        proposed = lines.propose(db, shipper, [cargo.id, "pool-cargo"], vessel.id)
+        voyage = db.get(CargoVoyage, proposed["id"])
+        confirmed = accept_and_confirm(db, voyage)
+        selected = lines.impact(db, control)
+        customer_prices = [{"cargo_id": m["cargo_id"], "total_minor": m["quote"]["total_minor"], "total_cost": m["quote"]["total_cost"], "invoice_total": m["invoice"]["total"], "eta": m["eta"], "rate_cards": m["quote"]["snapshot"]["rate_card_ids"]} for m in confirmed["members"]]
+        for status in ["SCHEDULED", "LOADING", "IN_TRANSIT", "UNLOADING"]:
+            lines.milestones(db, control, voyage.id, status)
+        for member in confirmed["members"]:
+            lines.receipt(db, control, voyage.id, member["cargo_id"], member["weight_tonnes"], "Alappuzha demo receiver")
+        completed = lines.impact(db, control)
+        chosen = sum(p["total_cost"] for p in customer_prices)
+        road_total = sum(m["quote"]["snapshot"]["road_baseline"]["total_cost"] for m in confirmed["members"])
+        metrics = {
+            "pooled_tonnes": confirmed["weight_tonnes"],
+            "utilization_pct": round(confirmed["utilization"] * 100, 1),
+            "modeled_sailing_contribution": confirmed["accepted_economics"]["contribution_minor"] / 100,
+            "accepted_delivery_revenue": confirmed["accepted_economics"]["revenue_minor"] / 100,
+            "modeled_payables_and_operating_allowance": confirmed["accepted_economics"]["operating_cost_minor"] / 100,
+            "existing_58t_contribution": existing_58["economics"]["contribution_minor"] / 100,
+            "whole_pickup_trucks": sum(j["kind"] == "PICKUP_TRUCK" for j in confirmed["jobs"]),
+            "provider_jobs": len(confirmed["jobs"]),
+            "individual_road_cost": cost_advice["road"]["total_cost"],
+            "individual_water_truck_cost": cost_advice["water"]["total_cost"],
+            "pooled_customer_cost": round(chosen, 2),
+            "pooled_road_baseline": round(road_total, 2),
+            "pooled_modeled_cost_difference": round(road_total - chosen, 2),
+            "selected_water_tonnes": selected["selected_water_tonnes"],
+            "completed_water_tonnes": completed["completed_water_tonnes"],
+            "estimated_full_delivery_co2_difference_kg": selected["estimated_full_delivery_co2_avoided_kg"],
+            "long_haul_truck_equivalents": selected["long_haul_truck_equivalents"],
+            "connecting_truck_trips": selected["connecting_truck_trips"],
+        }
         result = {
-            "generated_at": datetime.now(IST).isoformat(),
-            "source": "Calculated real application services and persisted bookings in isolated databases. All operational inputs are synthetic.",
-            "feasible_vessels": [
-                item["vessel_name"] for item in matched["recommendations"]
-            ],
-            "rejected": [
-                {
-                    "vessel": item["vessel_name"],
-                    "reasons": item["feasibility"]["reasons"],
-                }
-                for item in matched["rejected"]
-            ],
-            "individual_modes": modes["plans"],
-            "recommended_mode": modes["recommended_mode"],
-            "pool": {
-                key: pool[key]
-                for key in [
-                    "total_tonnes",
-                    "utilization_before_pct",
-                    "utilization_after_pct",
-                    "additional_revenue",
-                    "solver",
-                    "solver_status",
-                ]
-            },
-            "return_opportunities": [
-                {
-                    key: item[key]
-                    for key in [
-                        "cargo_type",
-                        "weight_tonnes",
-                        "revenue",
-                        "departure",
-                        "eta",
-                    ]
-                }
-                for item in backhaul["opportunities"]
-            ],
-            "created_bookings": len(booked["bookings"]),
-            "booking_impact": impact,
-            "judge_metrics": {
-                "vessel_utilization_before_pooling_pct": pool["utilization_before_pct"],
-                "vessel_utilization_after_pooling_pct": pool["utilization_after_pct"],
-                "pooling_tonnes": pool["total_tonnes"],
-                "backhaul_opportunity_tonnes": sum(
-                    item["weight_tonnes"] for item in backhaul["opportunities"]
-                ),
-                "road_cost": road["total_cost"],
-                "water_cost": modes["plans"][1]["total_cost"],
-                "water_infeasibility_reason": modes["plans"][1]["reasons"],
-                "hybrid_cost": hybrid["total_cost"],
-                "recommended_option": modes["recommended_mode"],
-                "individual_cost_difference": round(
-                    road["total_cost"] - hybrid["total_cost"], 2
-                ),
-                "individual_emissions_difference_kg": round(
-                    road["emissions_kg"] - hybrid["emissions_kg"], 2
-                ),
-                "pooled_cost_savings": impact["cost_savings"],
-                "pooled_emissions_difference_kg": impact["co2_avoided_kg"],
-                "truck_trip_estimate": impact["truck_trips_potentially_avoided"],
-                "hard_feasibility_rejections": len(matched["rejected"]),
-                "successful_vessel_matches": len(matched["recommendations"]),
-                "failed_vessel_matches": len(matched["rejected"]),
-                "unserved_demand_tonnes": unserved["unserved_tonnes"],
-            },
-            "terminal_to_terminal_water_example": {
-                "cost": direct_water["total_cost"],
-                "origin": "Maradu",
-                "destination": "Alappuzha",
-                "note": "Separate terminal-to-terminal input; not the door-pickup hero cargo",
-            },
-            "road_wins": {
-                "deadline_window_hours": 4,
-                "recommended_mode": road_wins["recommended_mode"],
-                "reason": road_wins["explanation"],
-            },
-        }
-        return_booked = create_booking(
-            db,
-            actor,
-            BookingCreate(
-                cargo_id="return-cargo",
-                vessel_id=vessel.id,
-                mode="WATER",
-                approved=True,
-            ),
-        )
-        result["booked_backhaul"] = {
-            "tonnes": db.get(CargoRequest, "return-cargo").weight_tonnes,
-            "counted_backhaul_matches": calculate_impact(db)["backhaul_matches"],
-            "created_bookings": len(return_booked["bookings"]),
+            "generated_at": utcnow().isoformat(),
+            "source": "Actual application services, immutable quotes, accepted simulated jobs, bookings and receipts in isolated SQLite. All rates, operating terms, geometry and emission factors are synthetic.",
+            "tariff": TERMS,
+            "judge_metrics": metrics,
+            "matching_recommendations": [{"vessel_id": r["vessel_id"], "name": r["vessel_name"]} for r in matched["recommendations"]],
+            "rejected": [{"vessel": r["vessel_name"], "reasons": r["feasibility"]["reasons"]} for r in matched["rejected"]],
+            "cost_advisor": cost_advice,
+            "customer_quotes": customer_prices,
+            "accepted_economics": confirmed["accepted_economics"],
+            "selected_impact": selected,
+            "completed_impact": completed,
+            "pool_solver": {"solver": pool["solver"], "status": pool["solver_status"], "selected_tonnes": pool["total_tonnes"]},
+            "return_opportunities": [{"cargo_type": r["cargo_type"], "weight_tonnes": r["weight_tonnes"], "source": "Opportunity only; excluded from all contribution and impact totals"} for r in backhaul["opportunities"]],
+            "confirmation_evidence": {"owner_quotes_approved": confirmed["owners_ready"], "operator_accepted_version": voyage.operator_accepted_version, "accepted_jobs": confirmed["accepted_job_count"], "job_count": confirmed["job_count"]},
         }
     with fixture() as db:
-        actor = db.get(User, "demo-shipper")
-        booking = create_booking(
-            db,
-            actor,
-            BookingCreate(
-                cargo_id="hero-cargo",
-                vessel_id="vembanad",
-                mode="HYBRID",
-                approved=True,
-            ),
-        )
-        from backend.models import Booking
-
-        active = db.get(Booking, booking["booking"]["id"])
-        dispatch = db.get(User, "demo-dispatch")
-        preview = disrupt(db, dispatch, active, "VESSEL_UNAVAILABLE")
-        replacement = next(
-            item
-            for item in preview["alternatives"]
-            if item["vessel_id"] == "pamba" and not item.get("service_id")
-        )
-        recovered = approve_recovery(
-            db,
-            dispatch,
-            active,
-            RecoveryApproval(
-                vessel_id="pamba", mode=replacement["mode"], approved=True
-            ),
-        )
-        result["recovery"] = {
-            "old_cost": booking["booking"]["total_cost"],
-            "new_cost": recovered["booking"]["total_cost"],
-            "old_eta": booking["booking"]["eta"],
-            "new_eta": recovered["booking"]["eta"],
-            "cost_impact": replacement["additional_cost"],
-            "eta_impact_minutes": replacement["eta_change_minutes"],
-            "sla": replacement["sla"],
-        }
-        result["judge_metrics"]["recovery_cost_impact"] = replacement["additional_cost"]
-        result["judge_metrics"]["recovery_eta_impact_minutes"] = replacement[
-            "eta_change_minutes"
-        ]
-    with fixture() as db:
-        start = tomorrow().date()
-        pattern = generate_pattern(
-            db,
-            db.get(User, "demo-admin"),
-            PatternCreate(
-                template_service_id="nw3-service",
-                name="Measured recurring demo",
-                operating_days=[0, 2, 4],
-                departure_time="09:15",
-                effective_date=start,
-                end_date=start + timedelta(days=14),
-                capacity_tonnes=100,
-            ),
-        )
-        result["recurring_service"] = {
-            "operating_days": ["Mon", "Wed", "Fri"],
-            "generated_departures": len(pattern["service_ids"]),
-            "capacity_tonnes": pattern["pattern"]["capacity_tonnes"],
-        }
-    with fixture() as db:
-        fleet = optimize_fleet(
-            db,
-            db.get(User, "demo-control"),
-            FleetRequest(
-                cargo_ids=[
-                    "hero-cargo",
-                    "pool-cargo",
-                    "return-cargo",
-                    "unserved-cargo",
-                ],
-                vessel_ids=["vembanad", "pamba", "periyar", "deep-blue"],
-            ),
-        )
-        result["fleet"] = {
-            key: fleet[key]
-            for key in [
-                "solver",
-                "solver_status",
-                "before",
-                "after",
-                "unmatched_cargo_ids",
-            ]
-        }
-        result["fleet"]["assignments"] = [
-            {
-                key: item[key]
-                for key in [
-                    "vessel_name",
-                    "cargo_ids",
-                    "tonnes",
-                    "capacity_tonnes",
-                    "utilization_pct",
-                    "empty_reposition_km",
-                ]
-            }
-            for item in fleet["assignments"]
-        ]
+        shipper, control = db.get(User, "demo-shipper"), db.get(User, "demo-control")
+        proposal = lines.propose(db, shipper, ["hero-cargo", "pool-cargo"], "vembanad")
+        voyage = db.get(CargoVoyage, proposal["id"])
+        confirmed = accept_and_confirm(db, voyage)
+        old_total = sum(m["quote"]["total_minor"] for m in confirmed["members"])
+        lines.disrupt(db, control, voyage.id)
+        offers = lines.recovery_options(db, control, voyage)
+        replacement = next(o for o in offers["options"] if o["vessel_id"] == "pamba")
+        fresh = lines.propose(db, control, replacement["cargo_ids"], "pamba", voyage.id)
+        recovered = accept_and_confirm(db, db.get(CargoVoyage, fresh["id"]), "demo-pamba-operator")
+        new_total = sum(m["quote"]["total_minor"] for m in recovered["members"])
+        result["pre_pickup_recovery"] = {"original_vessel": "vembanad", "replacement_vessel": "pamba", "old_total_minor": old_total, "new_total_minor": new_total, "approved_difference": (new_total - old_total) / 100, "all_new_quotes_approved": recovered["owners_ready"], "replacement_operator_accepted": recovered["operator_accepted"], "all_new_provider_jobs_accepted": recovered["providers_ready"], "original_invoice_state": "VOID", "source": "SIMULATED; no pickup has occurred"}
     return result
-
 
 if __name__ == "__main__":
     result = generate()
     target = Path(__file__).resolve().parent.parent / "data/demo/measured-results.json"
-    target.write_text(
-        json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    target.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
     print(json.dumps(result["judge_metrics"], indent=2))

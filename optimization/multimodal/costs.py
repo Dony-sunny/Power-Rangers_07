@@ -4,6 +4,7 @@ from data.seed.network import PLACES
 from backend.models import WaterwayNode
 from backend.services.timeutils import dt
 from optimization.config import RATES, EMISSIONS
+from optimization.multimodal.trip_costs import TERMS, minor, product, rupees, trips, truck_charge
 
 
 def coordinates(place, supplied=None):
@@ -44,14 +45,19 @@ def road_plan(cargo, flood=False):
         }
     distance = road_distance(origin, destination)
     breakdown = {
-        "road_freight": round(
-            cargo.weight_tonnes * distance * RATES["road_per_tonne_km"], 2
-        ),
+        "road_freight": rupees(truck_charge(cargo, distance)),
         "handling": round(cargo.weight_tonnes * RATES["road_handling_per_tonne"], 2),
+        "handling_setup": TERMS["road_handling_setup"],
     }
     hours = distance / RATES["road_speed_kmh"] + 0.75
     eta = dt(cargo.ready_time) + timedelta(hours=hours)
-    sla = eta <= dt(cargo.delivery_deadline)
+    receiving_start = getattr(cargo, "receiving_from", None)
+    receiving_end = getattr(cargo, "receiving_until", None)
+    wait = max(0, (dt(receiving_start) - eta).total_seconds() / 3600) if receiving_start else 0
+    eta += timedelta(hours=wait)
+    hours += wait
+    breakdown["truck_waiting"] = rupees(product(trips(cargo), max(0, wait - TERMS["truck_wait_allowance_hours"]), TERMS["truck_wait_per_hour"]))
+    sla = eta <= dt(cargo.delivery_deadline) and (not receiving_end or eta <= dt(receiving_end))
     return {
         "mode": "ROAD",
         "feasible": sla and not flood,
@@ -65,6 +71,10 @@ def road_plan(cargo, flood=False):
         "road_km": round(distance, 2),
         "water_km": 0,
         "handoffs": 1,
+        "truck_trips": trips(cargo),
+        "tariff_version": TERMS["version"],
+        "tariff_source": TERMS["source"],
+        "volume_verified": cargo.volume_m3 is not None,
         "reliability": 0.90,
         "reasons": ["Simulated flood: road corridor unavailable."]
         if flood
@@ -86,14 +96,13 @@ def water_cost(
 ):
     weight = cargo.weight_tonnes
     return {
-        "first_mile_truck": round(
-            weight * first_km * RATES["first_last_per_tonne_km"], 2
-        ),
-        "origin_handling": round(weight * origin_terminal.handling_rate, 2),
+        "first_mile_truck": rupees(truck_charge(cargo, first_km, True, cargo.first_mile_required)),
+        "origin_handling": rupees(product(weight, origin_terminal.handling_rate)),
+        "origin_handling_setup": TERMS["terminal_setup"],
         "storage_waiting": round(weight * waiting * RATES["storage_per_tonne_hour"], 2),
-        "water_freight": round(weight * distance * vessel.rate_per_tonne_km, 2),
-        "destination_handling": round(weight * destination_terminal.handling_rate, 2),
-        "last_mile_truck": round(
-            weight * last_km * RATES["first_last_per_tonne_km"], 2
-        ),
+        "water_freight": rupees(product(weight, distance, vessel.rate_per_tonne_km)),
+        "sailing_fixed": TERMS["sailing_sale_fixed"],
+        "destination_handling": rupees(product(weight, destination_terminal.handling_rate)),
+        "destination_handling_setup": TERMS["terminal_setup"],
+        "last_mile_truck": rupees(truck_charge(cargo, last_km, True, cargo.last_mile_required)),
     }

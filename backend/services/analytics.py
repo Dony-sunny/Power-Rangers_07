@@ -48,7 +48,7 @@ def record_search(db, cargo, candidates, rejected):
     )
 
 
-def failed_demand(db):
+def failed_demand(db, organization_ids=None):
     from optimization.matching.engine import match
 
     corridors = defaultdict(
@@ -61,6 +61,8 @@ def failed_demand(db):
     )
     rows = []
     for cargo in db.scalars(select(CargoRequest)):
+        if organization_ids is not None and cargo.organization_id not in organization_ids:
+            continue
         if db.scalar(
             select(Booking).where(
                 Booking.cargo_id == cargo.id,

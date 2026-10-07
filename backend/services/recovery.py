@@ -128,6 +128,9 @@ def alternatives(db, booking, actor):
 
 
 def disrupt(db, actor, booking, kind, details=None):
+    from backend.models import VoyageMember
+    if db.scalar(select(VoyageMember).where(VoyageMember.booking_id == booking.id)):
+        raise HTTPException(409, "Use the Cargo Lines pre-pickup disruption workflow.")
     details = details or {}
     booking_access(db, actor, booking)
     if booking.status not in {"CONFIRMED", "SCHEDULED", "REPLANNING"}:
@@ -326,6 +329,9 @@ def approve_recovery(
     plan_override=None,
     reserve_resources=True,
 ):
+    from backend.models import VoyageMember
+    if db.scalar(select(VoyageMember).where(VoyageMember.booking_id == booking.id)):
+        raise HTTPException(409, "Use the Cargo Lines replacement quote workflow.")
     booking_access(db, actor, booking)
     if not payload.approved:
         raise HTTPException(422, "Explicit approval is required before rebooking.")
@@ -529,6 +535,9 @@ def approve_recovery(
 
 
 def approve_pool_recovery(db, actor, booking, payload):
+    from backend.models import VoyageMember
+    if db.scalar(select(VoyageMember).where(VoyageMember.booking_id == booking.id)):
+        raise HTTPException(409, "Use the Cargo Lines replacement quote workflow.")
     from types import SimpleNamespace
     from feasibility.cargo_constraints.compatibility import compatible
     from backend.services.terminal_resources import reserve_plan

@@ -9,18 +9,21 @@ from optimization.terminal_selection.planner import node_for
 from optimization.config import EMISSIONS
 
 
-def calculate_impact(db):
+def calculate_impact(db, organization_ids=None):
     metrics = []
     delivered = []
     groups = {}
     for metric in db.scalars(select(ImpactMetric)):
         booking = db.get(Booking, metric.booking_id)
+        if organization_ids is not None and booking.organization_id not in organization_ids:
+            continue
         if booking.status in {"CANCELLED", "FAILED", "REPLANNING"}:
             continue
         metrics.append(metric)
         if booking.status == "DELIVERED":
             delivered.append(metric)
-        key = booking.pool_id or booking.id
+        member = db.scalar(select(VoyageMember).where(VoyageMember.booking_id == booking.id))
+        key = member.voyage_id if member else booking.pool_id or booking.id
         if metric.tonnes_shifted:
             groups[key] = metric
     demand = defaultdict(
@@ -34,6 +37,8 @@ def calculate_impact(db):
     terminal_demand = defaultdict(float)
     unmet = []
     for cargo in db.scalars(select(CargoRequest)):
+        if organization_ids is not None and cargo.organization_id not in organization_ids:
+            continue
         key = f"{node_for(cargo.origin)} → {node_for(cargo.destination)}"
         demand[key]["requested_tonnes"] += cargo.weight_tonnes
         demand[key]["requests"] += 1
@@ -96,6 +101,7 @@ def calculate_impact(db):
             cargo.weight_tonnes
             for cargo in db.scalars(select(CargoRequest))
             if node_for(cargo.origin) == terminal.node_id
+            and (organization_ids is None or cargo.organization_id in organization_ids)
             and cargo.status in {"POSTED", "MATCHED", "QUOTED", "REPLANNING"}
         )
         score = round(
@@ -124,7 +130,7 @@ def calculate_impact(db):
             select(MatchRecommendation).where(MatchRecommendation.passed == False)
         )
     )
-    unique_failures = {(f.cargo_id, f.vessel_id) for f in failures}
+    unique_failures = {(f.cargo_id, f.vessel_id) for f in failures if organization_ids is None or db.get(CargoRequest, f.cargo_id).organization_id in organization_ids}
     durations = []
     ontime = 0
     for metric in delivered:
@@ -178,12 +184,14 @@ def calculate_impact(db):
     }
 
 
-def modal_shift(db):
+def modal_shift(db, organization_ids=None):
     from backend.services.planning import compare_modes
     from optimization.matching.engine import match
 
     results = []
     for cargo in db.scalars(select(CargoRequest)):
+        if organization_ids is not None and cargo.organization_id not in organization_ids:
+            continue
         result = match(db, cargo)
         vessel = (
             result["recommendations"][0]["vessel_id"]

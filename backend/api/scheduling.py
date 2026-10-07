@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from backend.database import get_db
-from backend.auth import get_actor, permission, GLOBAL_ROLES
+from backend.auth import get_actor, permission, GLOBAL_ROLES, coordinated_orgs
 from backend.models import *
 from backend.schemas.extensions import (
     PatternCreate,
@@ -41,7 +41,8 @@ def patterns(db=Depends(get_db), actor=Depends(get_actor)):
         "contracts": [
             record(item)
             for item in db.scalars(select(CapacityContract))
-            if actor.role_id in {"admin", "control"}
+            if actor.role_id == "admin"
+            or actor.role_id == "control" and item.organization_id in coordinated_orgs(db, actor)
             or item.organization_id == actor.organization_id
         ],
     }
@@ -150,11 +151,30 @@ def resources(db=Depends(get_db), actor=Depends(get_actor)):
             ).organization_id
             == actor.organization_id
         ]
+    if actor.role_id in {"control", "dispatch", "fleet"}:
+        visible = set()
+        for booking in db.scalars(select(Booking)):
+            try:
+                booking_access(db, actor, booking)
+                visible.add(booking.id)
+            except HTTPException:
+                pass
+        for row in result["reservations"] + result["queue"]:
+            permitted = row.get("booking_id") in visible
+            if row.get("voyage_id"):
+                voyage = db.get(CargoVoyage, row["voyage_id"])
+                permitted = actor.role_id == "control" and voyage.coordinator_org_id == actor.organization_id
+            if not permitted:
+                for key in ["booking_id", "description", "cargo_id", "voyage_id", "provider_org_id", "provider_reference", "truck_resource_id"]:
+                    row.pop(key, None)
+        result["truck_appointments"] = [row for row in result["truck_appointments"] if db.get(Shipment, row["shipment_id"]).booking_id in visible]
     return result
 
 
 @router.post("/terminals/resources", status_code=201)
 def resource(payload: ResourceCreate, db=Depends(get_db), actor=Depends(get_actor)):
+    if actor.role_id == "control":
+        raise HTTPException(403, "Only terminal owners/admin maintain resource catalogs; coordinators allocate entrusted jobs.")
     terminal_access(db, actor, payload.terminal_id)
     item = TerminalResource(id=uid("resource"), **payload.model_dump())
     db.add(item)
@@ -168,6 +188,13 @@ def reserve(payload: ReservationCreate, db=Depends(get_db), actor=Depends(get_ac
     lock_writes(db)
     resource = require(db, TerminalResource, payload.resource_id)
     terminal_access(db, actor, resource.terminal_id)
+    if actor.role_id == "control":
+        if not payload.booking_id:
+            raise HTTPException(403, "Coordinator reservation must belong to an entrusted booking.")
+        booking = require(db, Booking, payload.booking_id)
+        booking_access(db, actor, booking)
+        if resource.terminal_id not in {booking.origin_terminal_id, booking.destination_terminal_id}:
+            raise HTTPException(403, "Resource does not belong to the entrusted shipment's terminals.")
     existing = reservations(db, resource, ())
     if (
         not resource.active

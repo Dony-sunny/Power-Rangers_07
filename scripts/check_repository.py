@@ -1,5 +1,6 @@
 """Read-only local publication checks. Prints file locations, never secret values."""
 
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -10,6 +11,23 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def check():
     problems = []
+    manifest = json.loads(
+        (ROOT / "docs/CHALLENGE_COVERAGE.json").read_text(encoding="utf-8")
+    )
+    required_features = {
+        "Cargo posting", "Boat availability listing", "Matching recommendations",
+        "Schedule planning", "Cost comparison",
+    }
+    if not required_features.issubset(
+        {feature["name"] for feature in manifest["requirements"]}
+    ):
+        problems.append(
+            "Challenge coverage is missing a suggested feature from the supplied brief."
+        )
+    for feature in manifest["requirements"]:
+        for relative in feature["source_files"] + feature["test_files"]:
+            if not (ROOT / relative).is_file():
+                problems.append(f"Broken challenge evidence reference: {relative}")
     links = 0
     for document in [ROOT / "README.md", *(ROOT / "docs").glob("*.md")]:
         for target in re.findall(

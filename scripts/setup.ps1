@@ -3,9 +3,9 @@ Set-Location -LiteralPath (Split-Path -Parent $PSScriptRoot)
 python -m venv .venv --without-pip
 if ($LASTEXITCODE -ne 0) { throw 'Python 3.12+ is required.' }
 if (Get-Command uv -ErrorAction SilentlyContinue) {
-    uv --cache-dir .runtime/uv-cache pip install --python .venv/Scripts/python.exe -r requirements.txt
+    uv --cache-dir .runtime/uv-cache pip install --python .venv/Scripts/python.exe -r backend/requirements.txt
 } else {
-    python -m pip --python .venv install -r requirements.txt
+    python -m pip --python .venv install -r backend/requirements.txt
 }
 if ($LASTEXITCODE -ne 0) { throw 'Python dependency installation failed.' }
 Push-Location frontend

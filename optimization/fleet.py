@@ -31,6 +31,9 @@ def optimize_fleet(db, actor, payload):
         set(payload.vessel_ids)
     ):
         raise HTTPException(404, "A selected cargo or vessel was not found.")
+    if actor.role_id == "control":
+        for cargo in cargos:
+            cargo_access(actor, cargo)
     if actor.role_id == "fleet" and any(
         v.organization_id != actor.organization_id for v in vessels
     ):
