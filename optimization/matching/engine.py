@@ -172,6 +172,9 @@ def match(
             )
     candidates.sort(key=lambda item: (-item["score"], item["vessel_id"]))
     if persist:
+        from backend.services.analytics import record_search
+
+        record_search(db, cargo, candidates, rejected)
         if cargo.status in {"POSTED", "MATCHED", "QUOTED"}:
             cargo.status = "QUOTED" if candidates else "POSTED"
         audit(

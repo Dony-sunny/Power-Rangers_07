@@ -17,6 +17,7 @@ from backend.repositories.common import require, record, uid, audit
 from backend.services.bookings import booking_access
 from backend.services.timeutils import utcnow, dt
 from backend.services.recovery import disrupt, alternatives, approve_recovery
+from backend.services.recovery import approve_pool_recovery
 from backend.services.impact import calculate_impact, modal_shift
 from backend.services.documents import generate_document
 from pydantic import Field
@@ -45,7 +46,9 @@ def disruption(
     permission(actor, "recover")
     if not settings.demo_mode:
         raise HTTPException(403, "Synthetic disruption controls are demo-only.")
-    return disrupt(db, actor, require(db, Booking, booking_id), payload.kind)
+    return disrupt(
+        db, actor, require(db, Booking, booking_id), payload.kind, payload.model_dump()
+    )
 
 
 @router.get("/bookings/{booking_id}/recovery")
@@ -72,6 +75,17 @@ def document(booking_id: str, kind: str, db=Depends(get_db), actor=Depends(get_a
     return generate_document(db, actor, require(db, Booking, booking_id), kind)
 
 
+@router.post("/bookings/{booking_id}/recover-pool")
+def recover_pool(
+    booking_id: str,
+    payload: RecoveryApproval,
+    db=Depends(get_db),
+    actor=Depends(get_actor),
+):
+    permission(actor, "recover")
+    return approve_pool_recovery(db, actor, require(db, Booking, booking_id), payload)
+
+
 @router.post("/shipments/{shipment_id}/operations")
 def operations(
     shipment_id: str,
@@ -79,7 +93,15 @@ def operations(
     db=Depends(get_db),
     actor=Depends(get_actor),
 ):
-    allowed = {"warehouse", "receiver", "dispatch", "terminal", "control", "admin"}
+    allowed = {
+        "warehouse",
+        "receiver",
+        "dispatch",
+        "terminal",
+        "fleet",
+        "control",
+        "admin",
+    }
     if actor.role_id not in allowed:
         raise HTTPException(403, "Role cannot update cargo handover records.")
     shipment = require(db, Shipment, shipment_id)
@@ -91,6 +113,8 @@ def operations(
         "actual_volume_m3",
         "packing_ready",
         "handover_confirmed",
+        "gate_out",
+        "loading_sequence",
     }
     receiver_keys = {"quantity_received_tonnes", "damage_report", "delivery_signature"}
     if (
@@ -98,6 +122,8 @@ def operations(
         and not set(updates) <= warehouse_keys
         or actor.role_id == "receiver"
         and not set(updates) <= receiver_keys
+        or actor.role_id == "fleet"
+        and not set(updates) <= {"crew_assignment"}
     ):
         raise HTTPException(403, "These fields belong to another operational role.")
     cargo = db.get(CargoRequest, booking.cargo_id)
@@ -296,3 +322,21 @@ def payment(
     audit(db, "payment.status_changed", payment.id, actor, status=payload.status)
     db.commit()
     return record(payment)
+
+
+@router.get("/payments/{payment_id}/history")
+def payment_history(payment_id: str, db=Depends(get_db), actor=Depends(get_actor)):
+    permission(actor, "finance")
+    item = require(db, PaymentRecord, payment_id)
+    invoice = require(db, InvoiceRecord, item.invoice_id)
+    booking_access(db, actor, require(db, Booking, invoice.booking_id))
+    return {
+        "events": [
+            record(event)
+            for event in db.scalars(
+                select(AuditEvent)
+                .where(AuditEvent.entity_id == item.id)
+                .order_by(AuditEvent.timestamp)
+            )
+        ]
+    }

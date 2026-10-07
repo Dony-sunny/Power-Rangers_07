@@ -100,6 +100,8 @@ def choose_terminals(
                         hours=first_km / RATES["road_speed_kmh"] + origin.wait_hours
                     ),
                     exclude_booking_ids=exclude_booking_ids,
+                    cargo=cargo,
+                    vessel=vessel,
                 )
                 departure = start + timedelta(hours=RATES["handling_hours"])
                 path = route(db, origin.node_id, destination.node_id, vessel, departure)
@@ -121,6 +123,8 @@ def choose_terminals(
                     destination.id,
                     water_arrival + timedelta(hours=destination.wait_hours),
                     exclude_booking_ids=exclude_booking_ids,
+                    cargo=cargo,
+                    vessel=vessel,
                 )
                 eta = unload + timedelta(
                     hours=RATES["handling_hours"] + last_km / RATES["road_speed_kmh"]

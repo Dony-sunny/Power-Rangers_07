@@ -9,6 +9,12 @@ from backend.api.intake import router as intake_router
 from backend.api.optimization import router as optimization_router
 from backend.api.operations import router as operations_router
 from backend.api.demo import router as demo_router
+from backend.api.providers import router as provider_router
+from backend.api.scheduling import router as scheduling_router
+from backend.api.evidence import router as evidence_router
+from backend.api.admin import router as admin_router
+from backend.api.analytics import router as analytics_router
+from backend.api.judge import router as judge_router
 from data.seed.network import initialize
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -38,6 +44,12 @@ app.include_router(intake_router)
 app.include_router(optimization_router)
 app.include_router(operations_router)
 app.include_router(demo_router)
+app.include_router(provider_router)
+app.include_router(scheduling_router)
+app.include_router(evidence_router)
+app.include_router(admin_router)
+app.include_router(analytics_router)
+app.include_router(judge_router)
 
 
 @app.middleware("http")

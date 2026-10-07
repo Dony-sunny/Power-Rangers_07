@@ -93,6 +93,7 @@ class BookingCreate(StrictModel):
     mode: Literal["ROAD", "WATER", "HYBRID"] = "HYBRID"
     pool_id: str | None = None
     service_id: str | None = None
+    contract_id: str | None = None
     approved: bool = False
 
 
@@ -111,13 +112,27 @@ class StateChange(StrictModel):
 
 
 class Disruption(StrictModel):
-    kind: Literal["VESSEL_UNAVAILABLE", "ROUTE_CLOSED", "TERMINAL_CLOSED"]
+    kind: Literal[
+        "VESSEL_UNAVAILABLE",
+        "ROUTE_CLOSED",
+        "TERMINAL_CLOSED",
+        "EQUIPMENT_UNAVAILABLE",
+        "SHIPMENT_NOT_READY",
+        "TRUCK_LATE",
+        "SERVICE_CANCELLED",
+        "CAPACITY_REDUCED",
+    ]
+    delay_minutes: int = Field(default=60, ge=0, le=1440)
+    capacity_tonnes: float | None = Field(
+        default=None, gt=0, le=5000, allow_inf_nan=False
+    )
 
 
 class RecoveryApproval(StrictModel):
     vessel_id: str | None = None
     mode: Literal["ROAD", "WATER", "HYBRID"] = "HYBRID"
     approved: bool = False
+    service_id: str | None = None
 
 
 class OperationUpdate(StrictModel):
@@ -133,15 +148,21 @@ class OperationUpdate(StrictModel):
     )
     damage_report: str | None = Field(default=None, max_length=2000)
     delivery_signature: str | None = Field(default=None, max_length=100)
+    gate_out: bool | None = None
+    loading_sequence: list[str] | None = Field(default=None, max_length=30)
+    crew_assignment: str | None = Field(default=None, max_length=200)
+    handling_completed: bool | None = None
+    terminal_delay_minutes: int | None = Field(default=None, ge=0, le=1440)
 
 
 class NavigationCreate(StrictModel):
     segment_id: str
     report_type: Literal[
-        "VEGETATION", "SHALLOW", "OBSTRUCTION", "DEBRIS", "DELAY", "HAZARD"
+        "VEGETATION", "SHALLOW", "OBSTRUCTION", "DEBRIS", "DELAY", "HAZARD", "OTHER"
     ]
     description: str = Field(min_length=3, max_length=2000)
     coordinates: tuple[float, float]
+    confidence: float = Field(default=0.5, ge=0, le=1, allow_inf_nan=False)
 
 
 class MaintenanceUpdate(StrictModel):

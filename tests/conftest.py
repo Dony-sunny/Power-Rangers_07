@@ -21,6 +21,10 @@ def db():
     Base.metadata.create_all(engine)
     with sessionmaker(bind=engine, expire_on_commit=False)() as session:
         seed(session)
+        from backend.services.terminal_resources import seed_resources
+
+        seed_resources(session)
+        session.commit()
         yield session
     engine.dispose()
 

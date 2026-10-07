@@ -125,10 +125,10 @@ def workspace(db, actor):
             if m.vessel_id in {v.id for v in vessels}
         ],
         "reports": [record(r) for r in db.scalars(select(NavigationReport))]
-        if role in {"captain", "network", "admin", "compliance"}
+        if role in {"captain", "operator", "fleet", "network", "admin", "compliance"}
         else [],
     }
-    if role in {"finance", "admin"}:
+    if role in {"finance", "admin", "operator"}:
         invoices = [
             i
             for i in db.scalars(select(InvoiceRecord))
@@ -151,5 +151,17 @@ def workspace(db, actor):
         response["organizations"] = [
             record(o) for o in db.scalars(select(Organization))
         ]
-        response["users"] = [record(u) for u in db.scalars(select(User))]
+        response["users"] = [
+            {
+                **record(u),
+                "disabled": bool(
+                    db.scalar(
+                        select(UserStatus).where(
+                            UserStatus.user_id == u.id, UserStatus.disabled == True
+                        )
+                    )
+                ),
+            }
+            for u in db.scalars(select(User))
+        ]
     return response

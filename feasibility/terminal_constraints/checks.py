@@ -12,6 +12,26 @@ def terminal_checks(db, cargo, vessel, terminal):
     if not capability:
         return [f"{terminal.name}: missing verified capability record."]
     reasons = []
+    from backend.models import TerminalResource
+    from backend.services.terminal_resources import requirements
+
+    resources = list(
+        db.scalars(
+            select(TerminalResource).where(TerminalResource.terminal_id == terminal.id)
+        )
+    )
+    if resources:
+        for kind, quantity in requirements(cargo).items():
+            if not any(
+                resource.active
+                and resource.kind == kind
+                and resource.capacity >= quantity
+                and (kind != "BERTH" or vessel.length <= resource.max_vessel_length)
+                for resource in resources
+            ):
+                reasons.append(
+                    f"{terminal.name}: configured {kind.lower()} resource unavailable."
+                )
     if capability.operational_status != "OPEN":
         reasons.append(
             f"{terminal.name}: terminal is {capability.operational_status.lower()}."
@@ -28,7 +48,10 @@ def terminal_checks(db, cargo, vessel, terminal):
         cargo.first_mile_required or cargo.last_mile_required
     ):
         reasons.append(f"{terminal.name}: road access required for connecting truck.")
-    if cargo.cargo_type in {"steel", "construction"} and (
+    if (
+        cargo.cargo_type in {"steel", "construction"}
+        or getattr(cargo, "needs_crane", False)
+    ) and (
         not capability.crane_available
         or capability.crane_capacity < min(cargo.weight_tonnes, 10)
     ):
@@ -37,17 +60,43 @@ def terminal_checks(db, cargo, vessel, terminal):
         )
     if (
         cargo.packaging in {"bagged", "pallets", "bales"}
-        and not capability.forklift_available
-    ):
+        or getattr(cargo, "needs_forklift", False)
+    ) and not capability.forklift_available:
         reasons.append(f"{terminal.name}: forklift required for packaged cargo.")
     if (
-        cargo.perishable or cargo.cargo_type == "cement"
+        cargo.perishable
+        or cargo.cargo_type == "cement"
+        or getattr(cargo, "needs_covered_storage", False)
     ) and not capability.covered_storage:
         reasons.append(f"{terminal.name}: covered cargo storage required.")
     return reasons
 
 
-def next_slot(db, terminal_id, earliest, duration_hours=0.75, exclude_booking_ids=()):
+def next_slot(
+    db,
+    terminal_id,
+    earliest,
+    duration_hours=0.75,
+    exclude_booking_ids=(),
+    cargo=None,
+    vessel=None,
+):
+    if cargo is not None and vessel is not None:
+        from backend.services.terminal_resources import next_resource_slot
+        from backend.models import TerminalResource
+
+        if db.scalar(
+            select(TerminalResource).where(TerminalResource.terminal_id == terminal_id)
+        ):
+            return next_resource_slot(
+                db,
+                terminal_id,
+                cargo,
+                vessel,
+                earliest,
+                duration_hours,
+                exclude_booking_ids,
+            )
     candidate = earliest
     slots = []
     for slot in db.scalars(

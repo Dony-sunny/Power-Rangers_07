@@ -338,6 +338,12 @@ def seed(db):
                 departure=(arrival + timedelta(minutes=15)).isoformat(),
             )
         )
+    from backend.services.terminal_resources import seed_resources
+
+    seed_resources(db)
+    from backend.services.analytics import seed_rate_history
+
+    seed_rate_history(db)
     db.commit()
 
 
@@ -347,6 +353,13 @@ def initialize(reset=False):
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
         seed(db)
+        from backend.services.terminal_resources import seed_resources
+
+        seed_resources(db)
+        from backend.services.analytics import seed_rate_history
+
+        seed_rate_history(db)
+        db.commit()
 
 
 if __name__ == "__main__":

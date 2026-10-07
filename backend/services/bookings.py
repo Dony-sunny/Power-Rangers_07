@@ -95,10 +95,11 @@ def _active_for_cargo(db, cargo_id):
     )
 
 
-def create_booking(db, actor, request):
+def create_booking(db, actor, request, commit=True, acquire_lock=True):
     if not request.approved:
         raise HTTPException(422, "Explicit booking approval is required.")
-    lock_writes(db)
+    if acquire_lock:
+        lock_writes(db)
     cargo = require(db, CargoRequest, request.cargo_id)
     cargo_access(actor, cargo)
     if db.bind.dialect.name != "sqlite":
@@ -146,7 +147,7 @@ def create_booking(db, actor, request):
                 422,
                 "Scheduled capacity requires the service vessel and an individual cargo.",
             )
-        validate_capacity(db, service, cargo)
+        validate_capacity(db, service, cargo, request.contract_id, actor)
     excluded_service_ids = []
     if service:
         for capacity in db.scalars(
@@ -202,6 +203,9 @@ def create_booking(db, actor, request):
     combined_plan = None
     if pool:
         merged = SimpleNamespace(**record(cargo))
+        from backend.services.terminal_resources import apply_group_requirements
+
+        apply_group_requirements(merged, cargos)
         merged.weight_tonnes = sum(item.weight_tonnes for item in cargos)
         merged.volume_m3 = (
             sum(item.volume_m3 for item in cargos)
@@ -262,6 +266,24 @@ def create_booking(db, actor, request):
             from optimization.scheduled_services.planner import service_plan
 
             plan = service_plan(db, service, item, plan)
+            if request.contract_id:
+                contract = db.get(CapacityContract, request.contract_id)
+                breakdown = {
+                    **plan["breakdown"],
+                    "water_freight": round(
+                        contract.rate_per_tonne * item.weight_tonnes, 2
+                    ),
+                }
+                plan = {
+                    **plan,
+                    "breakdown": breakdown,
+                    "total_cost": round(sum(breakdown.values()), 2),
+                    "contract_id": contract.id,
+                }
+                if item.budget and plan["total_cost"] > item.budget:
+                    raise HTTPException(
+                        409, "Contract delivered price exceeds confirmed cargo budget."
+                    )
         risk = booking_risk(item, plan)
         booking = Booking(
             id=uid("booking"),
@@ -323,6 +345,35 @@ def create_booking(db, actor, request):
                     sequence=i,
                     assigned_provider=vessel.name if mode == "WATER" else None,
                 )
+            )
+        if request.contract_id:
+            if not service:
+                raise HTTPException(
+                    422, "Contract capacity requires a scheduled service."
+                )
+            db.add(
+                ContractDraw(
+                    id=uid("contract-draw"),
+                    contract_id=request.contract_id,
+                    booking_id=booking.id,
+                    service_id=service.id,
+                    tonnes=item.weight_tonnes,
+                )
+            )
+        if vessel and (index == 0 or service):
+            from backend.services.terminal_resources import reserve_plan
+
+            reserve_cargo = SimpleNamespace(**record(item))
+            if pool:
+                apply_group_requirements(reserve_cargo, cargos)
+                reserve_cargo.weight_tonnes = sum(c.weight_tonnes for c in cargos)
+                reserve_cargo.cargo_type = (
+                    "construction"
+                    if any(c.cargo_type in {"steel", "construction"} for c in cargos)
+                    else item.cargo_type
+                )
+            reserve_plan(
+                db, booking, reserve_cargo, vessel, service.id if service else None
             )
         if vessel and index == 0:
             for operation, terminal_id, start_key in [
@@ -437,7 +488,8 @@ def create_booking(db, actor, request):
             mode=request.mode,
             shipment_id=shipment.id,
         )
-    db.commit()
+    if commit:
+        db.commit()
     return {
         "bookings": bookings,
         "booking": bookings[0]["booking"],
@@ -460,6 +512,14 @@ def transition(db, actor, shipment, new_state):
             409, "Required last-mile leg must be completed before delivery."
         )
     cargo = db.get(CargoRequest, booking.cargo_id)
+    if (
+        new_state == "DELIVERED"
+        and shipment.operational_data.get("pod_required")
+        and not shipment.operational_data.get("pod_verified")
+    ):
+        raise HTTPException(
+            409, "Receiver must verify the active delivery challenge before delivery."
+        )
     if new_state == "IN_TRANSIT" and cargo.volume_m3 is None:
         raise HTTPException(409, "Verify cargo volume before departure.")
     shipment.status = booking.status = cargo.status = new_state

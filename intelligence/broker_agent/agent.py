@@ -1,4 +1,6 @@
 import json
+import asyncio
+import time
 from fastapi import HTTPException
 from backend.auth import cargo_access, permission
 from backend.models import CargoRequest, Vessel
@@ -123,8 +125,14 @@ async def broker(db, actor, text, cargo_id=None):
             {"role": "user", "content": text},
         ]
         try:
+            started = time.monotonic()
             for _ in range(4):
-                turn = await provider.tool_turn(messages, schemas)
+                remaining = 16 - (time.monotonic() - started)
+                if remaining <= 0:
+                    raise ProviderUnavailable("Broker provider time budget exceeded.")
+                turn = await asyncio.wait_for(
+                    provider.tool_turn(messages, schemas), timeout=remaining
+                )
                 calls = turn.get("tool_calls") or []
                 if not calls:
                     break
@@ -155,7 +163,7 @@ async def broker(db, actor, text, cargo_id=None):
                         }
                     )
             mode = "llm_tool_orchestration"
-        except (ProviderUnavailable, ValueError, KeyError, TypeError):
+        except (ProviderUnavailable, ValueError, KeyError, TypeError, TimeoutError):
             warnings.append(
                 "Provider unavailable or invalid tool call; deterministic tool orchestration completed the plan."
             )

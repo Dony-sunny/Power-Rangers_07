@@ -18,6 +18,64 @@ from feasibility.engine import check_feasibility
 router = APIRouter(prefix="/api", tags=["optimization"])
 
 
+from backend.schemas.extensions import FleetRequest
+from optimization.fleet import optimize_fleet, approve_fleet
+
+
+@router.get("/fleet/demand")
+def fleet_demand(db=Depends(get_db), actor=Depends(get_actor)):
+    if actor.role_id not in {"fleet", "control", "admin"}:
+        raise HTTPException(403, "Fleet demand requires operations permissions.")
+    vessels = [
+        vessel
+        for vessel in db.scalars(select(Vessel))
+        if actor.role_id in {"control", "admin"}
+        or vessel.organization_id == actor.organization_id
+    ]
+    return {
+        "cargo": [
+            {
+                key: getattr(cargo, key)
+                for key in [
+                    "id",
+                    "cargo_type",
+                    "weight_tonnes",
+                    "volume_m3",
+                    "origin",
+                    "destination",
+                ]
+            }
+            for cargo in db.scalars(select(CargoRequest))
+            if cargo.status in {"POSTED", "MATCHED", "QUOTED"}
+            and cargo.volume_m3 is not None
+        ],
+        "vessels": [
+            {
+                "id": vessel.id,
+                "name": vessel.name,
+                "max_capacity_tonnes": vessel.max_capacity_tonnes,
+            }
+            for vessel in vessels
+        ],
+    }
+
+
+@router.post("/fleet/optimize")
+def fleet_plan(payload: FleetRequest, db=Depends(get_db), actor=Depends(get_actor)):
+    if actor.role_id not in {"fleet", "control", "admin"}:
+        raise HTTPException(
+            403, "Fleet optimization requires fleet or control permissions."
+        )
+    return optimize_fleet(db, actor, payload)
+
+
+@router.post("/fleet/plans/{plan_id}/approve")
+def fleet_approval(
+    plan_id: str, approved: bool = False, db=Depends(get_db), actor=Depends(get_actor)
+):
+    return approve_fleet(db, actor, plan_id, approved)
+
+
 @router.post("/cargo/{cargo_id}/pool")
 def pool(cargo_id: str, vessel_id: str, db=Depends(get_db), actor=Depends(get_actor)):
     permission(actor, "plan")
@@ -85,12 +143,24 @@ def services(db=Depends(get_db), actor=Depends(get_actor)):
     result = []
     for service in db.scalars(select(ScheduledService)):
         usage = segment_usage(db, service)
+        from backend.services.recurring import segment_limit
+
+        limits = {sequence: segment_limit(db, service, sequence) for sequence in usage}
         result.append(
             {
                 **record(service),
                 "segment_usage": usage,
-                "remaining_capacity_tonnes": service.capacity_tonnes
-                - max(usage.values(), default=0),
+                "segment_capacities": limits,
+                "booked_tonnes": max(usage.values(), default=0),
+                "projected_utilization_pct": round(
+                    max(usage.values(), default=0) / service.capacity_tonnes * 100, 1
+                ),
+                "remaining_capacity_tonnes": min(
+                    (limits[sequence] - usage[sequence] for sequence in usage),
+                    default=service.capacity_tonnes,
+                )
+                if service.active
+                else 0,
                 "stops": [
                     record(s)
                     for s in db.scalars(

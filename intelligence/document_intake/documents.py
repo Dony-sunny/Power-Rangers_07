@@ -26,12 +26,20 @@ def document_text(content, suffix):
         if not content.startswith(b"%PDF-"):
             raise HTTPException(415, "File is not a valid PDF.")
         try:
-            reader = PdfReader(BytesIO(content))
-            if reader.is_encrypted:
-                raise ValueError("Encrypted PDF")
-            if len(reader.pages) > 40:
-                raise HTTPException(413, "PDF limit: 40 pages.")
-            return "\n".join(page.extract_text() or "" for page in reader.pages)[:30000]
+            import subprocess, sys, json
+
+            completed = subprocess.run(
+                [sys.executable, "-m", "intelligence.document_intake.pdf_worker"],
+                input=content,
+                capture_output=True,
+                timeout=12,
+                creationflags=subprocess.CREATE_NO_WINDOW
+                if sys.platform == "win32"
+                else 0,
+            )
+            if completed.returncode != 0:
+                raise ValueError()
+            return json.loads(completed.stdout)["text"]
         except HTTPException:
             raise
         except Exception:

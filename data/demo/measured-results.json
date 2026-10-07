@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-10-07T00:22:26.785005+05:30",
-  "source": "Calculated application results using synthetic demo inputs, isolated database",
+  "generated_at": "2026-10-07T11:36:49.479540+05:30",
+  "source": "Calculated real application services and persisted bookings in isolated databases. All operational inputs are synthetic.",
   "feasible_vessels": [
     "MV Vembanad",
     "MV Pamba",
@@ -172,7 +172,9 @@
         "node_id": "maradu",
         "nearby_demand_tonnes": 138.0,
         "reserved_slots": 1,
-        "activation_score": 77.6,
+        "activation_score": 87.6,
+        "listed_vessel_supply_tonnes": 560.0,
+        "unserved_nearby_demand_tonnes": 0,
         "capacity_gap_tonnes": 0,
         "source": "Demo decision-support heuristic; not authoritative infrastructure planning"
       },
@@ -181,7 +183,9 @@
         "node_id": "vaikom",
         "nearby_demand_tonnes": 240.0,
         "reserved_slots": 0,
-        "activation_score": 98.0,
+        "activation_score": 80.0,
+        "listed_vessel_supply_tonnes": 0,
+        "unserved_nearby_demand_tonnes": 240.0,
         "capacity_gap_tonnes": 0,
         "source": "Demo decision-support heuristic; not authoritative infrastructure planning"
       },
@@ -190,7 +194,9 @@
         "node_id": "thanneermukkom",
         "nearby_demand_tonnes": 0.0,
         "reserved_slots": 0,
-        "activation_score": 50.0,
+        "activation_score": 40.0,
+        "listed_vessel_supply_tonnes": 0,
+        "unserved_nearby_demand_tonnes": 0,
         "capacity_gap_tonnes": 0,
         "source": "Demo decision-support heuristic; not authoritative infrastructure planning"
       },
@@ -200,11 +206,13 @@
         "nearby_demand_tonnes": 62.0,
         "reserved_slots": 1,
         "activation_score": 62.4,
+        "listed_vessel_supply_tonnes": 150.0,
+        "unserved_nearby_demand_tonnes": 62.0,
         "capacity_gap_tonnes": 0,
         "source": "Demo decision-support heuristic; not authoritative infrastructure planning"
       }
     ],
-    "failed_match_count": 0,
+    "failed_match_count": 5,
     "corridor_reliability": {
       "sample_count": 0,
       "median_estimated_journey_hours": null,
@@ -220,5 +228,104 @@
       "verification_status": "SIMULATED"
     },
     "source": "Aggregated application bookings using synthetic inputs. Selected/confirmed impact is potential; completed impact is separately reported. No certified environmental claims."
+  },
+  "judge_metrics": {
+    "vessel_utilization_before_pooling_pct": 53.3,
+    "vessel_utilization_after_pooling_pct": 92.0,
+    "pooling_tonnes": 138.0,
+    "backhaul_opportunity_tonnes": 62.0,
+    "road_cost": 50885.21,
+    "water_cost": null,
+    "water_infeasibility_reason": [
+      "Direct water requires terminal-to-terminal cargo; first/last-mile trucking is included under HYBRID."
+    ],
+    "hybrid_cost": 35391.34,
+    "recommended_option": "HYBRID",
+    "individual_cost_difference": 15493.87,
+    "individual_emissions_difference_kg": 419.51,
+    "pooled_cost_savings": 27857.4,
+    "pooled_emissions_difference_kg": 723.66,
+    "truck_trip_estimate": 7,
+    "hard_feasibility_rejections": 1,
+    "successful_vessel_matches": 3,
+    "failed_vessel_matches": 1,
+    "unserved_demand_tonnes": 302.0,
+    "recovery_cost_impact": 2048.0,
+    "recovery_eta_impact_minutes": 0
+  },
+  "terminal_to_terminal_water_example": {
+    "cost": 25000.0,
+    "origin": "Maradu",
+    "destination": "Alappuzha",
+    "note": "Separate terminal-to-terminal input; not the door-pickup hero cargo"
+  },
+  "road_wins": {
+    "deadline_window_hours": 4,
+    "recommended_mode": "ROAD",
+    "reason": "Road is the lowest delivered-cost plan that meets the requested deadline and constraints."
+  },
+  "booked_backhaul": {
+    "tonnes": 62.0,
+    "counted_backhaul_matches": 1,
+    "created_bookings": 1
+  },
+  "recovery": {
+    "old_cost": 35391.34,
+    "new_cost": 37439.34,
+    "old_eta": "2026-10-08T16:54:26.602528+05:30",
+    "new_eta": "2026-10-08T16:54:26.602528+05:30",
+    "cost_impact": 2048.0,
+    "eta_impact_minutes": 0,
+    "sla": true
+  },
+  "recurring_service": {
+    "operating_days": [
+      "Mon",
+      "Wed",
+      "Fri"
+    ],
+    "generated_departures": 6,
+    "capacity_tonnes": 100.0
+  },
+  "fleet": {
+    "solver": "OR-Tools CP-SAT",
+    "solver_status": "OPTIMAL",
+    "before": {
+      "utilization_pct": 44.4,
+      "estimated_cost": 72928.54,
+      "empty_reposition_km": 64.0
+    },
+    "after": {
+      "utilization_pct": 66.7,
+      "estimated_cost": 76461.34,
+      "empty_reposition_km": 64.0,
+      "unmatched_cargo": 1
+    },
+    "unmatched_cargo_ids": [
+      "unserved-cargo"
+    ],
+    "assignments": [
+      {
+        "vessel_name": "MV Pamba",
+        "cargo_ids": [
+          "hero-cargo",
+          "pool-cargo"
+        ],
+        "tonnes": 138.0,
+        "capacity_tonnes": 150.0,
+        "utilization_pct": 92.0,
+        "empty_reposition_km": 0.0
+      },
+      {
+        "vessel_name": "MV Vembanad",
+        "cargo_ids": [
+          "return-cargo"
+        ],
+        "tonnes": 62.0,
+        "capacity_tonnes": 150.0,
+        "utilization_pct": 41.3,
+        "empty_reposition_km": 64.0
+      }
+    ]
   }
 }

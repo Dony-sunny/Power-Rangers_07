@@ -6,7 +6,8 @@ import time
 from fastapi import Depends, Header, HTTPException
 from backend.config import settings
 from backend.database import get_db
-from backend.models import User
+from backend.models import User, UserStatus
+from sqlalchemy import select
 
 ROLE_LABELS = {
     "shipper": "Shipper procurement",
@@ -57,6 +58,9 @@ def get_actor(
         user = db.get(User, user_id)
         if not user or user.role_id != x_demo_role:
             raise HTTPException(403, "Demo user does not have this role.")
+        status = db.scalar(select(UserStatus).where(UserStatus.user_id == user.id))
+        if status and status.disabled:
+            raise HTTPException(403, "User is disabled.")
         return user
     if not settings.auth_secret or len(settings.auth_secret) < 32:
         raise HTTPException(
@@ -77,7 +81,11 @@ def get_actor(
         if float(claims["exp"]) <= time.time():
             raise ValueError()
         user = db.get(User, claims["sub"])
-        if not user:
+        if not user or db.scalar(
+            select(UserStatus).where(
+                UserStatus.user_id == user.id, UserStatus.disabled == True
+            )
+        ):
             raise ValueError()
         return user
     except (ValueError, KeyError, TypeError):

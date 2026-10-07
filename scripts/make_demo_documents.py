@@ -60,6 +60,28 @@ def generate():
     (target / "sample_purchase_order.txt").write_text(
         "\n".join(lines), encoding="utf-8"
     )
+    from PIL import Image, ImageDraw, ImageFont
+    from intelligence.document_intake.spreadsheets import template_bytes
+    import textwrap
+
+    image = Image.new("RGB", (1800, 1700), "white")
+    try:
+        font = ImageFont.truetype("arial.ttf", 36)
+    except OSError:
+        font = ImageFont.truetype("DejaVuSans.ttf", 36)
+    draw = ImageDraw.Draw(image)
+    scan_lines = [
+        *lines[:2],
+        "Company: Kerala Demo Builders",
+        "Reference: PO-SCAN-001",
+        *lines[2:],
+    ]
+    wrapped = [part for line in scan_lines for part in textwrap.wrap(line, width=78)]
+    for index, line in enumerate(wrapped):
+        draw.text((65, 65 + index * 90), line, fill="black", font=font)
+    image.save(target / "scanned_purchase_order.png")
+    image.save(target / "scanned_purchase_order.pdf", "PDF", resolution=150)
+    (target / "cargo_bulk.xlsx").write_bytes(template_bytes())
     with (target / "cargo_bulk.csv").open("w", newline="", encoding="utf-8") as handle:
         fields = [
             "cargo_type",
@@ -95,7 +117,9 @@ def generate():
                     consolidation_allowed=True,
                 )
             )
-    print("Synthetic PDF, TXT and CSV examples generated in data/demo.")
+    print(
+        "Synthetic text PDF, scanned PDF/PNG, TXT, CSV and XLSX examples generated in data/demo."
+    )
 
 
 if __name__ == "__main__":

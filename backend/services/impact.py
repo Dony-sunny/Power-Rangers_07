@@ -82,6 +82,30 @@ def calculate_impact(db):
             + (10 if capability.crane_available else 0),
             1,
         )
+        supply = sum(
+            min(
+                availability.capacity_tonnes,
+                db.get(Vessel, availability.vessel_id).max_capacity_tonnes,
+            )
+            for availability in db.scalars(
+                select(VesselAvailability).where(VesselAvailability.active == True)
+            )
+            if node_for(availability.origin) == terminal.node_id
+        )
+        failed_nearby = sum(
+            cargo.weight_tonnes
+            for cargo in db.scalars(select(CargoRequest))
+            if node_for(cargo.origin) == terminal.node_id
+            and cargo.status in {"POSTED", "MATCHED", "QUOTED", "REPLANNING"}
+        )
+        score = round(
+            min(40, nearby / 5)
+            + (20 if capability.road_access else 0)
+            + (10 if capability.operational_status == "OPEN" else 0)
+            + (10 if capability.crane_available else 0)
+            + min(20, supply / 15),
+            1,
+        )
         activations.append(
             {
                 "terminal": terminal.name,
@@ -89,6 +113,8 @@ def calculate_impact(db):
                 "nearby_demand_tonnes": nearby,
                 "reserved_slots": active_slots,
                 "activation_score": score,
+                "listed_vessel_supply_tonnes": supply,
+                "unserved_nearby_demand_tonnes": failed_nearby,
                 "capacity_gap_tonnes": max(0, nearby - capability.available_storage),
                 "source": "Demo decision-support heuristic; not authoritative infrastructure planning",
             }

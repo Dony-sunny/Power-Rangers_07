@@ -48,6 +48,9 @@ def reset(db=Depends(get_db), actor=Depends(get_actor)):
     db.commit()
     db.expunge_all()
     seed(db)
+    from backend.services.terminal_resources import seed_resources
+
+    seed_resources(db)
     audit(db, "demo.reset", "demo", None)
     db.commit()
     return {

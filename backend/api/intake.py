@@ -1,8 +1,18 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from backend.database import get_db
 from backend.auth import get_actor, permission
-from backend.models import CargoDocument
-from backend.repositories.common import uid, record
+from backend.models import CargoDocument, BulkImport, CargoRequest
+from backend.repositories.common import uid, record, require, audit
+from backend.services.timeutils import utcnow, dt
+from datetime import timedelta
+from fastapi.responses import Response
+from starlette.concurrency import run_in_threadpool
+from intelligence.document_intake.ocr import validate_image, run_ocr
+from intelligence.document_intake.spreadsheets import (
+    preview_rows,
+    template_bytes,
+    error_csv,
+)
 from backend.schemas.requests import TextIntake, CargoCreate
 from intelligence.document_intake.parser import parse_cargo
 from intelligence.document_intake.documents import (
@@ -33,16 +43,24 @@ async def cargo_document(
         content.startswith(b"\x89PNG\r\n\x1a\n") or content.startswith(b"\xff\xd8\xff")
     ):
         raise HTTPException(415, "Image file signature is invalid.")
-    text = "" if image else document_text(content, suffix)
+    if image:
+        validate_image(content)
+    text = "" if image else await run_in_threadpool(document_text, content, suffix)
+    recognition = None
+    if image or suffix == ".pdf" and len(text.strip()) < 25:
+        recognition = await run_in_threadpool(run_ocr, content, suffix)
+        text = recognition["text"]
     extraction = await parse_cargo(
         text,
-        content if image else None,
+        content if image and not text else None,
         "image/png" if suffix == ".png" else "image/jpeg",
     )
-    if not text and not image:
-        extraction["warnings"].append(
-            "No extractable text: scanned PDFs need OCR/multimodal integration. Enter missing fields manually."
-        )
+    if recognition:
+        extraction["document_recognition"] = {
+            k: v for k, v in recognition.items() if k != "text"
+        }
+        extraction["warnings"].extend(recognition["warnings"])
+        extraction["extracted_text_preview"] = text[:1500]
     document = CargoDocument(
         id=uid("document"),
         organization_id=actor.organization_id,
@@ -58,36 +76,98 @@ async def cargo_document(
 
 
 @router.post("/cargo/bulk-preview")
-async def bulk_preview(file: UploadFile = File(...), actor=Depends(get_actor)):
+async def bulk_preview(
+    file: UploadFile = File(...), db=Depends(get_db), actor=Depends(get_actor)
+):
     permission(actor, "cargo_write")
     content, _, suffix = await read_upload(file)
-    if suffix != ".csv":
-        raise HTTPException(
-            415, "Bulk preview accepts CSV. XLSX conversion is an extension point."
-        )
-    results = []
-    from pydantic import ValidationError
+    results = await run_in_threadpool(preview_rows, content, suffix)
+    batch = BulkImport(
+        id=uid("import"), organization_id=actor.organization_id, rows=results
+    )
+    db.add(batch)
+    db.commit()
+    return {
+        "rows": results,
+        "preview_id": batch.id,
+        "valid_count": sum(r["valid"] for r in results),
+        "invalid_count": sum(not r["valid"] for r in results),
+        "requires_confirmation": True,
+        "saved": False,
+    }
 
-    for index, row in enumerate(csv_preview(content)):
-        row = {k: v for k, v in row.items() if v != ""}
-        try:
-            parsed = CargoCreate.model_validate(row)
-            results.append(
-                {
-                    "row": index + 2,
-                    "valid": True,
-                    "fields": parsed.model_dump(mode="json"),
-                }
+
+@router.get("/cargo/bulk-template")
+def bulk_template(actor=Depends(get_actor)):
+    permission(actor, "cargo_write")
+    return Response(
+        template_bytes(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": 'attachment; filename="jalayatra-cargo-template.xlsx"'
+        },
+    )
+
+
+@router.get("/cargo/bulk-preview/{preview_id}/errors")
+def bulk_errors(preview_id: str, db=Depends(get_db), actor=Depends(get_actor)):
+    permission(actor, "cargo_write")
+    batch = require(db, BulkImport, preview_id)
+    if batch.organization_id != actor.organization_id:
+        raise HTTPException(404, "Preview not found.")
+    return Response(
+        error_csv(batch.rows),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="import-errors.csv"'},
+    )
+
+
+@router.post("/cargo/bulk-import/{preview_id}", status_code=201)
+def bulk_import(
+    preview_id: str,
+    approved: bool = False,
+    db=Depends(get_db),
+    actor=Depends(get_actor),
+):
+    permission(actor, "cargo_write")
+    if not approved:
+        raise HTTPException(422, "Approve valid rows before import.")
+    from backend.services.bookings import lock_writes
+
+    lock_writes(db)
+    batch = require(db, BulkImport, preview_id)
+    if batch.organization_id != actor.organization_id:
+        raise HTTPException(404, "Preview not found.")
+    if batch.imported or dt(batch.created_at) + timedelta(hours=1) <= utcnow():
+        raise HTTPException(
+            409, "Preview was already imported or has expired. Preview again."
+        )
+    created = []
+    for row in batch.rows:
+        if row["valid"]:
+            fields = CargoCreate.model_validate(row["fields"]).model_dump(mode="json")
+            cargo = CargoRequest(
+                id=uid("cargo"), organization_id=actor.organization_id, **fields
             )
-        except ValidationError as error:
-            results.append(
-                {
-                    "row": index + 2,
-                    "valid": False,
-                    "errors": error.errors(include_url=False, include_context=False),
-                }
+            db.add(cargo)
+            audit(
+                db,
+                "cargo.created",
+                cargo.id,
+                actor,
+                import_id=batch.id,
+                reference=row["reference"],
             )
-    return {"rows": results, "requires_confirmation": True, "saved": False}
+            created.append(cargo.id)
+    if not created:
+        raise HTTPException(422, "No valid rows to import.")
+    batch.imported = True
+    db.commit()
+    return {
+        "cargo_ids": created,
+        "imported_count": len(created),
+        "skipped_invalid": sum(not r["valid"] for r in batch.rows),
+    }
 
 
 @router.post("/vessel/text")

@@ -23,6 +23,11 @@ class CargoExtraction(BaseModel):
     hazardous: bool | None = None
     perishable: bool | None = None
     temperature_control_required: bool | None = None
+    company_name: str | None = Field(default=None, max_length=200)
+    reference_number: str | None = Field(default=None, max_length=100)
+    cargo_description: str | None = Field(default=None, max_length=1000)
+    quantity: str | None = Field(default=None, max_length=100)
+    special_handling: str | None = Field(default=None, max_length=1000)
 
 
 ALIASES = {
@@ -60,6 +65,8 @@ def normalize(text):
 
 
 def explicit_time(text, kind, now):
+    text = re.sub(r"(\d{4}-\d{2}-\d{2})(?=\d{1,2}:\d{2})", r"\1 ", text)
+    text = re.sub(r"deliverby", "deliver by", text, flags=re.I)
     pattern = (
         r"(?:ready|pickup|available(?:\s+from)?)\s*(?:time\s*)?[:=]?\s*"
         if kind == "ready"
@@ -74,17 +81,17 @@ def explicit_time(text, kind, now):
     if not match:
         return None
     day, hour, minute, meridiem = match.groups()
-    base = (
-        now + timedelta(days=1)
-        if day.lower() == "tomorrow"
-        else now
-        if day.lower() == "today"
-        else datetime.fromisoformat(day).replace(tzinfo=IST)
-    )
-    hour = int(hour)
-    if meridiem:
-        hour = hour % 12 + (12 if meridiem.lower() == "pm" else 0)
     try:
+        base = (
+            now + timedelta(days=1)
+            if day.lower() == "tomorrow"
+            else now
+            if day.lower() == "today"
+            else datetime.fromisoformat(day).replace(tzinfo=IST)
+        )
+        hour = int(hour)
+        if meridiem:
+            hour = hour % 12 + (12 if meridiem.lower() == "pm" else 0)
         return base.replace(hour=hour, minute=int(minute), second=0, microsecond=0)
     except ValueError:
         return None
@@ -126,6 +133,22 @@ def local_cargo(text, now=None):
             )
     fields["ready_time"] = explicit_time(normalized, "ready", now)
     fields["delivery_deadline"] = explicit_time(normalized, "delivery", now)
+    for key, pattern in {
+        "company_name": r"(?:company|supplier)\s*[:=]\s*([^\n;]+)",
+        "reference_number": r"(?:reference|invoice\s*(?:no\.?|number)?|purchase order|PO)\s*[:=#]?\s*([A-Z0-9][A-Z0-9/-]{2,99})",
+        "cargo_description": r"(?:cargo description|description)\s*[:=]\s*([^\n;]+)",
+        "quantity": r"(?:quantity|qty)\s*[:=]\s*([^\n;]+)",
+        "special_handling": r"(?:special handling|handling instructions)\s*[:=]\s*([^\n;]+)",
+    }.items():
+        found = re.search(pattern, text, re.I)
+        if found:
+            fields[key] = found.group(1).strip()[
+                : 100
+                if key in {"reference_number", "quantity"}
+                else 200
+                if key == "company_name"
+                else 1000
+            ]
     for flag in ["fragile", "hazardous", "perishable"]:
         if re.search(r"\b(?:not|non[- ]?)\s*" + flag + r"\b", lower):
             fields[flag] = False
@@ -136,6 +159,16 @@ def local_cargo(text, now=None):
 
 def result(extraction, source, warnings=()):
     fields = extraction.model_dump(mode="json")
+    details = {
+        key: fields.pop(key)
+        for key in [
+            "company_name",
+            "reference_number",
+            "cargo_description",
+            "quantity",
+            "special_handling",
+        ]
+    }
     missing = [key for key in REQUIRED if fields.get(key) is None]
     warnings = list(warnings)
     unspecified = [
@@ -172,6 +205,7 @@ def result(extraction, source, warnings=()):
         warnings.append("Delivery deadline must follow cargo readiness.")
     return {
         "fields": fields,
+        "document_details": details,
         "confidence": {
             key: 0.95 if source == "local_rules" else 0.80
             for key, value in fields.items()
