@@ -87,6 +87,16 @@ def reservations(db, resource, exclusions):
             ):
                 continue
         result.append(reservation)
+    # A Cargo Lines departure owns reservations independently of any first member.
+    from backend.services.timeutils import utcnow
+    for job in db.scalars(select(ProviderJob).where(ProviderJob.terminal_resource_id == resource.id,
+                                                  ProviderJob.status.in_(["PENDING", "ACCEPTED"]))):
+        voyage = db.get(CargoVoyage, job.voyage_id)
+        if f"voyage:{voyage.id}" in exclusions or voyage.status in {"CANCELLED", "EXPIRED", "DECLINED", "DISRUPTED", "COMPLETED"}:
+            continue
+        if voyage.status == "HELD" and dt(voyage.expires_at) <= utcnow():
+            continue
+        result.append(job)
     return result
 
 

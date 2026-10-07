@@ -7,6 +7,7 @@ from backend.auth import (
     cargo_access,
     vessel_access,
     GLOBAL_ROLES,
+    coordinated_orgs,
 )
 from backend.models import CargoRequest, Vessel, ScheduledService, ScheduledServiceStop
 from backend.repositories.common import require, record
@@ -48,6 +49,7 @@ def fleet_demand(db=Depends(get_db), actor=Depends(get_actor)):
             for cargo in db.scalars(select(CargoRequest))
             if cargo.status in {"POSTED", "MATCHED", "QUOTED"}
             and cargo.volume_m3 is not None
+            and (actor.role_id != "control" or cargo.organization_id in coordinated_orgs(db, actor))
         ],
         "vessels": [
             {
@@ -85,7 +87,7 @@ def pool(cargo_id: str, vessel_id: str, db=Depends(get_db), actor=Depends(get_ac
         db,
         cargo,
         require(db, Vessel, vessel_id),
-        None if actor.role_id in GLOBAL_ROLES else actor.organization_id,
+        None if actor.role_id in GLOBAL_ROLES | {"control"} else actor.organization_id,
         actor=actor,
     )
 

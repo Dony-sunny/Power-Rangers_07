@@ -15,6 +15,7 @@ from backend.api.evidence import router as evidence_router
 from backend.api.admin import router as admin_router
 from backend.api.analytics import router as analytics_router
 from backend.api.judge import router as judge_router
+from backend.api.cargo_lines import router as lines_router
 from data.seed.network import initialize
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -36,7 +37,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins.split(","),
     allow_credentials=False,
-    allow_methods=["GET", "POST", "PATCH"],
+    allow_methods=["GET", "POST", "PUT", "PATCH"],
     allow_headers=["Content-Type", "Authorization", "X-Demo-Role", "X-Demo-User"],
 )
 app.include_router(router)
@@ -50,6 +51,7 @@ app.include_router(evidence_router)
 app.include_router(admin_router)
 app.include_router(analytics_router)
 app.include_router(judge_router)
+app.include_router(lines_router)
 
 
 @app.middleware("http")

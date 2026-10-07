@@ -6,7 +6,7 @@ from sqlalchemy import select, text
 from backend.auth import cargo_access, GLOBAL_ROLES
 from backend.models import *
 from backend.repositories.common import uid, require, record, audit
-from backend.services.timeutils import dt
+from backend.services.timeutils import dt, utcnow
 from backend.services.planning import compare_modes
 from feasibility.engine import check_feasibility
 from feasibility.cargo_constraints.compatibility import compatible
@@ -46,6 +46,9 @@ def lock_writes(db):
 
 def booking_access(db, actor, booking):
     if actor.role_id in GLOBAL_ROLES:
+        return
+    if actor.role_id == "control":
+        cargo_access(actor, db.get(CargoRequest, booking.cargo_id))
         return
     if booking.organization_id == actor.organization_id:
         return
@@ -126,6 +129,10 @@ def create_booking(db, actor, request, commit=True, acquire_lock=True):
         ):
             raise HTTPException(409, "The selected pool is no longer compatible.")
     for item in cargos:
+        held = db.scalar(select(VoyageMember).join(CargoVoyage).where(
+            VoyageMember.cargo_id == item.id, VoyageMember.status == "PROPOSED", CargoVoyage.status == "HELD"))
+        if held and dt(db.get(CargoVoyage, held.voyage_id).expires_at) > utcnow():
+            raise HTTPException(409, "Cargo has a locked departure proposal; approve its quote and provider jobs.")
         if _active_for_cargo(db, item.id):
             raise HTTPException(
                 409, "Cargo already has an active or delivered booking."
@@ -501,6 +508,8 @@ def create_booking(db, actor, request, commit=True, acquire_lock=True):
 def transition(db, actor, shipment, new_state):
     booking = require(db, Booking, shipment.booking_id)
     booking_access(db, actor, booking)
+    if db.scalar(select(VoyageMember).where(VoyageMember.booking_id == shipment.booking_id)):
+        raise HTTPException(409, "Use Cargo Lines shared milestones and individual receipt actions.")
     if new_state not in NEXT_STATES.get(shipment.status, set()):
         raise HTTPException(409, f"Cannot transition {shipment.status} → {new_state}.")
     if (

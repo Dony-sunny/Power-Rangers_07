@@ -59,6 +59,13 @@ def reset(db=Depends(get_db), actor=Depends(get_actor)):
     }
 
 
+@router.post("/demo/populate")
+def populate_marketplace(db=Depends(get_db), actor=Depends(get_actor)):
+    demo_permission(actor)
+    from backend.services.marketplace_demo import populate
+    return populate(db)
+
+
 @router.post("/demo/scenario")
 def scenario(payload: DemoScenario, db=Depends(get_db), actor=Depends(get_actor)):
     demo_permission(actor)

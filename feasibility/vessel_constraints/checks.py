@@ -1,6 +1,6 @@
 from sqlalchemy import select
-from backend.models import Booking, CargoRequest
-from backend.services.timeutils import overlaps
+from backend.models import Booking, CargoRequest, CargoVoyage, VoyageMember
+from backend.services.timeutils import overlaps, dt
 
 ACTIVE_BOOKING_STATES = {
     "CONFIRMED",
@@ -17,6 +17,9 @@ def reserved(db, vessel_id, start, end, exclude_booking_ids=()):
     weight = volume = 0.0
     cargos = []
     for booking in db.scalars(select(Booking).where(Booking.vessel_id == vessel_id)):
+        member = db.scalar(select(VoyageMember).where(VoyageMember.booking_id == booking.id))
+        if member:  # Count the common physical water interval below, once.
+            continue
         if (
             booking.id in exclude_booking_ids
             or booking.status not in ACTIVE_BOOKING_STATES
@@ -27,6 +30,19 @@ def reserved(db, vessel_id, start, end, exclude_booking_ids=()):
         weight += cargo.weight_tonnes
         volume += cargo.volume_m3 or 0
         cargos.append(cargo)
+    from backend.services.timeutils import utcnow
+    for voyage in db.scalars(select(CargoVoyage).where(CargoVoyage.vessel_id == vessel_id)):
+        if f"voyage:{voyage.id}" in exclude_booking_ids or voyage.status in {"CANCELLED", "EXPIRED", "DECLINED", "DISRUPTED", "COMPLETED"}:
+            continue
+        if voyage.status == "HELD" and dt(voyage.expires_at) <= utcnow():
+            continue
+        if not overlaps(start, end, voyage.plan["loading_start"], voyage.plan["water_end"]):
+            continue
+        for member in db.scalars(select(VoyageMember).where(VoyageMember.voyage_id == voyage.id, VoyageMember.status.not_in(["CANCELLED", "DELIVERED"]))):
+            cargo = db.get(CargoRequest, member.cargo_id)
+            weight += cargo.weight_tonnes
+            volume += cargo.volume_m3 or 0
+            cargos.append(cargo)
     return weight, volume, cargos
 
 

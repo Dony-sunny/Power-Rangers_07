@@ -41,7 +41,8 @@ def corridors(db=Depends(get_db), actor=Depends(get_actor)):
 @router.get("/intelligence/failed-demand")
 def unmet(db=Depends(get_db), actor=Depends(get_actor)):
     permission(actor, "metrics")
-    return failed_demand(db)
+    from backend.auth import coordinated_orgs
+    return failed_demand(db, coordinated_orgs(db, actor) if actor.role_id == "control" else None)
 
 
 @router.get("/cargo/{cargo_id}/rate-benchmark")

@@ -1,0 +1,407 @@
+/* Task-first interface: readable text, restrained surfaces, explicit next steps. */
+:root {
+  --muted: #52675f;
+  --green: #17634d;
+  --border: #dce5df;
+  background: #f6f8f6;
+  color: #203c32;
+  font-size: 16px;
+}
+main {
+  max-width: 1240px;
+  padding: 40px 40px 24px;
+}
+.page-heading {
+  align-items: flex-start;
+  margin-bottom: 30px;
+}
+.page-heading h1 {
+  font-size: clamp(26px, 2.7vw, 36px);
+  letter-spacing: -1px;
+  max-width: 720px;
+}
+.page-heading p {
+  font-size: 16px;
+  line-height: 1.7;
+  max-width: 680px;
+  color: var(--muted);
+  margin-top: 12px;
+}
+.eyebrow,
+.panel-head .eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #52675f;
+}
+.sidebar {
+  padding: 28px 16px 0;
+}
+.sidebar nav button {
+  min-height: 48px;
+  font-size: 14px;
+  color: #52675f;
+}
+.sidebar nav button.active {
+  color: #15563f;
+  background: #e9f2ec;
+  font-weight: 700;
+}
+.workspace-label {
+  font-size: 11px;
+  color: #52675f;
+}
+.brand small {
+  font-size: 9px;
+  letter-spacing: 0.6px;
+  color: #52675f;
+}
+.corridor-card {
+  font-size: 13px;
+  padding: 16px;
+}
+.corridor-card strong {
+  line-height: 1.5;
+}
+.corridor-card p {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.corridor-card span {
+  font-size: 10px;
+}
+.sidebar-link,
+.identity small {
+  font-size: 12px;
+}
+.topbar .breadcrumb {
+  font-size: 13px;
+}
+.role-select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.role-caption {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.role-select select {
+  min-height: 44px;
+  font-size: 13px;
+  max-width: 220px;
+}
+.role-select svg {
+  top: 15px;
+}
+.demo-indicator {
+  font-size: 12px;
+}
+.button {
+  min-height: 44px;
+  font-size: 14px;
+  line-height: 1.5;
+  border-radius: 8px;
+}
+.button.small {
+  min-height: 40px;
+  font-size: 13px;
+}
+.button.primary {
+  background: var(--green);
+}
+.icon-button,
+.mobile-toggle {
+  min-width: 44px;
+  min-height: 44px;
+}
+button,
+a,
+input,
+select,
+textarea,
+summary {
+  outline-offset: 4px;
+}
+:focus-visible {
+  outline: 3px solid #237cba;
+}
+.skip-link {
+  position: fixed;
+  top: -80px;
+  left: 16px;
+  z-index: 100;
+  padding: 14px 20px;
+  background: white;
+  border: 2px solid var(--green);
+  border-radius: 8px;
+}
+.skip-link:focus {
+  top: 12px;
+}
+.navigation-scrim {
+  display: none;
+}
+.cargo-lines {
+  gap: 24px;
+}
+.journey-steps {
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+}
+.journey-steps button {
+  border: 0;
+  border-radius: 0;
+  padding: 18px 14px;
+  min-height: 90px;
+  font-size: 14px;
+}
+.journey-steps button.current {
+  background: #eaf3ed;
+  box-shadow: inset 0 -3px #17634d;
+}
+.journey-steps button small {
+  font-size: 12px;
+  color: #52675f;
+}
+.journey-steps button:disabled {
+  opacity: 1;
+  color: #64736b;
+  background: #f7f8f7;
+}
+.journey-steps button:focus-visible {
+  outline-offset: -4px;
+}
+.step-guidance {
+  padding: 4px 0 4px 20px;
+  border-left: 3px solid var(--green);
+}
+.step-guidance > span {
+  display: block;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+.step-guidance strong {
+  font-size: 21px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.step-guidance p {
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-top: 8px;
+  max-width: 740px;
+}
+.cargo-lines .panel {
+  border-radius: 12px;
+  box-shadow: none;
+}
+.cargo-lines .panel-head {
+  padding-top: 22px;
+  padding-bottom: 22px;
+}
+.cargo-lines .panel-head h2 {
+  font-size: 20px;
+}
+.cargo-choice-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr));
+}
+.cargo-choice {
+  background: #fafcf9;
+  padding: 24px;
+}
+.cargo-choice h3 {
+  margin-top: 14px;
+  font-size: 23px;
+}
+.cargo-choice p {
+  font-size: 17px;
+}
+.cargo-choice small {
+  font-size: 14px;
+}
+.cargo-choice > .button {
+  margin-top: 22px;
+}
+.sample-tag {
+  font-size: 12px;
+}
+.cargo-more {
+  margin-top: 18px;
+}
+.muted,
+.line-note,
+.line-form label {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.line-form input,
+.line-form select {
+  min-height: 46px;
+  font-size: 15px;
+}
+.line-price {
+  font-size: 32px;
+}
+.line-cost h3 {
+  font-size: 18px;
+}
+.line-cost p {
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 12px 0;
+}
+.line-cost details {
+  margin-top: 18px;
+  font-size: 14px;
+}
+.cargo-lines summary {
+  min-height: 40px;
+  padding: 8px 0;
+  line-height: 1.7;
+}
+.badge {
+  font-size: 12px;
+}
+.next-task > span {
+  font-size: 11px;
+}
+.next-task > small,
+.approval-checklist small,
+.member-commercial small,
+.line-member small {
+  font-size: 13px;
+  color: var(--muted);
+}
+.line-source {
+  font-size: 12px;
+}
+footer {
+  font-size: 12px;
+  line-height: 1.6;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+@media (max-width: 1100px) {
+  main {
+    padding: 28px 24px;
+  }
+  .topbar {
+    padding: 12px 24px;
+    height: auto;
+    min-height: 74px;
+    flex-wrap: wrap;
+  }
+  .topbar-actions {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .demo-indicator {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  main {
+    padding: 24px 16px;
+  }
+  .topbar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .topbar .breadcrumb {
+    display: flex;
+  }
+  .breadcrumb > span,
+  .breadcrumb > strong {
+    display: none;
+  }
+  .topbar-actions {
+    justify-content: flex-end;
+    flex: 1;
+  }
+  .role-caption {
+    display: none;
+  }
+  .role-select select {
+    max-width: 220px;
+    font-size: 13px;
+  }
+  .page-heading {
+    flex-direction: column;
+    gap: 18px;
+  }
+  .page-heading h1 {
+    font-size: 28px;
+  }
+  .page-heading p {
+    font-size: 15px;
+    max-width: none;
+  }
+  .page-heading .button {
+    font-size: 14px;
+    margin-top: 0;
+    width: 100%;
+    justify-content: center;
+  }
+  .navigation-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: #13291d66;
+    z-index: 39;
+  }
+  .sidebar {
+    width: min(290px, 85vw);
+    overflow-y: auto;
+  }
+  .sidebar nav button {
+    font-size: 15px;
+  }
+  .journey-steps button {
+    padding: 12px 10px;
+    min-height: 88px;
+    font-size: 13px;
+  }
+  .journey-steps button small {
+    font-size: 11px;
+  }
+  .step-guidance {
+    padding-left: 14px;
+  }
+  .step-guidance strong {
+    font-size: 19px;
+  }
+  .cargo-lines .panel {
+    padding: 0 16px 20px;
+  }
+  .cargo-lines .panel > .panel-head {
+    margin: 0 -16px 20px;
+    padding: 20px 16px;
+  }
+  .cargo-lines .panel-head h2 {
+    font-size: 18px;
+  }
+  .cargo-choice {
+    padding: 18px;
+  }
+  .line-form label {
+    min-width: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}

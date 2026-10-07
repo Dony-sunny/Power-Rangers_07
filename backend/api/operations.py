@@ -28,13 +28,15 @@ router = APIRouter(prefix="/api", tags=["operations"])
 @router.get("/impact")
 def impact(db=Depends(get_db), actor=Depends(get_actor)):
     permission(actor, "metrics")
-    return calculate_impact(db)
+    from backend.auth import coordinated_orgs
+    return calculate_impact(db, coordinated_orgs(db, actor) if actor.role_id == "control" else None)
 
 
 @router.get("/intelligence/modal-shift")
 def intelligence(db=Depends(get_db), actor=Depends(get_actor)):
     permission(actor, "metrics")
-    return modal_shift(db)
+    from backend.auth import coordinated_orgs
+    return modal_shift(db, coordinated_orgs(db, actor) if actor.role_id == "control" else None)
 
 
 @router.post("/bookings/{booking_id}/disrupt")
@@ -107,6 +109,8 @@ def operations(
     shipment = require(db, Shipment, shipment_id)
     booking = require(db, Booking, shipment.booking_id)
     booking_access(db, actor, booking)
+    if db.scalar(select(VoyageMember).where(VoyageMember.booking_id == booking.id)):
+        raise HTTPException(409, "Cargo Lines accepted loads require its quote amendment/receipt workflow.")
     updates = payload.model_dump(exclude_none=True)
     warehouse_keys = {
         "actual_weight_tonnes",

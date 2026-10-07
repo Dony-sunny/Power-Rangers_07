@@ -7,7 +7,7 @@ DISPATCH = {"X-Demo-Role": "dispatch"}
 def test_fleet_assignment_capacity_and_hard_constraints(client):
     response = client.post(
         "/api/fleet/optimize",
-        headers=CONTROL,
+        headers={"X-Demo-Role": "admin"},
         json={
             "cargo_ids": ["hero-cargo", "pool-cargo", "unserved-cargo"],
             "vessel_ids": ["vembanad", "pamba", "deep-blue"],
