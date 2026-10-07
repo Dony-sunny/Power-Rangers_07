@@ -24,6 +24,7 @@ import {
 } from "../api";
 import { Panel, Stat, Badge, Empty, Loading, Progress, CheckItem } from "./UI";
 import RouteMap from "./RouteMap";
+import { RateBenchmark } from "./NetworkIntelligence";
 
 export default function Planner({
   data,
@@ -129,6 +130,9 @@ export default function Planner({
           note="Against this cargo’s road baseline"
         />
       </div>
+      {cargo && (
+        <RateBenchmark cargoId={cargo.id} vesselId={vesselId} role={role} />
+      )}
       <div className="planner-grid">
         <Panel
           title="Your next shipment"

@@ -178,12 +178,42 @@ export default function Operator({
             </strong>
           </label>
           <label>
+            On-time percentage
+            <strong>{vessel?.trust_metrics?.on_time_pct ?? "—"}%</strong>
+          </label>
+          <label>
+            Damage/claim percentage
+            <strong>{vessel?.trust_metrics?.claims_pct ?? "—"}%</strong>
+          </label>
+          <label>
             Compliance<strong>{vessel?.compliance_status}</strong>
           </label>
           <label>
             Source<strong>Synthetic demo history</strong>
           </label>
         </div>
+      </Panel>
+      <Panel title="Own booking payments & settlements">
+        {(data.payments || []).length ? (
+          (data.payments || []).map((payment: Data) => {
+            const invoice = data.invoices.find(
+              (i: Data) => i.id === payment.invoice_id,
+            );
+            return (
+              <div className="service-card" key={payment.id}>
+                <div>
+                  <strong>{invoice?.booking_id}</strong>
+                  <p>
+                    {money(invoice?.total)} · {payment.status}
+                  </p>
+                  <small>Prototype payment states; no funds transferred.</small>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <p>No payment records for your assigned bookings yet.</p>
+        )}
       </Panel>
     </>
   );

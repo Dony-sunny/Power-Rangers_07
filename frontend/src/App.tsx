@@ -113,9 +113,26 @@ export default function App() {
     [busy, setBusy] = useState(false),
     [showIntake, setShowIntake] = useState(false),
     [mobileMenu, setMobileMenu] = useState(false);
+  const [resolvedRecord, setResolvedRecord] = useState<Data | null>(null);
+  useEffect(() => {
+    const resolve = () => {
+      const reference = window.location.hash.match(
+        /^#\/record\/(label-[a-f0-9]{32})$/,
+      )?.[1];
+      if (reference)
+        api(`/labels/${reference}`, role)
+          .then(setResolvedRecord)
+          .catch((e) => setError(e.message));
+    };
+    resolve();
+    window.addEventListener("hashchange", resolve);
+    return () => window.removeEventListener("hashchange", resolve);
+  }, [role]);
   const load = useCallback(async () => {
     try {
       const snapshot = await api("/workspace", role);
+      if (!snapshot.demo_mode && snapshot.actor.role_id !== role)
+        setRole(snapshot.actor.role_id);
       setData(snapshot);
       setError("");
       if (role === "captain")
@@ -168,24 +185,53 @@ export default function App() {
   const isPlanner = ["shipper", "control"].includes(role);
   const nav =
     role === "shipper"
-      ? ["overview", "cargo", "tracking", "services"]
+      ? ["overview", "cargo", "tracking", "services", "evidence"]
       : role === "control"
-        ? ["overview", "planner", "tracking", "services"]
+        ? [
+            "overview",
+            "planner",
+            "tracking",
+            "services",
+            "optimization",
+            "resources",
+          ]
         : role === "operator"
-          ? ["overview", "voice", "fleet", "tracking"]
-          : role === "government"
-            ? ["overview", "network", "intelligence"]
-            : role === "captain"
-              ? ["overview", "tracking", "reports"]
-              : role === "admin"
-                ? ["overview", "demo", "audit"]
-                : [
-                    "overview",
-                    "tracking",
-                    ...(["network", "compliance"].includes(role)
-                      ? ["network", "audit", "reports"]
-                      : []),
-                  ];
+          ? ["overview", "voice", "fleet", "tracking", "services", "reports"]
+          : role === "fleet"
+            ? ["overview", "optimization", "services", "tracking", "reports"]
+            : role === "terminal"
+              ? ["overview", "resources", "tracking"]
+              : role === "government"
+                ? ["overview", "network", "intelligence"]
+                : role === "captain"
+                  ? ["overview", "tracking", "reports"]
+                  : role === "admin"
+                    ? [
+                        "overview",
+                        "judge",
+                        "demo",
+                        "audit",
+                        "services",
+                        "optimization",
+                        "resources",
+                        "administration",
+                        "intelligence",
+                        "evidence",
+                        "finance",
+                      ]
+                    : [
+                        "overview",
+                        "tracking",
+                        "evidence",
+                        ...(["dispatch"].includes(role) ? ["resources"] : []),
+                        ...(["network", "compliance"].includes(role)
+                          ? [
+                              "network",
+                              "audit",
+                              ...(role === "network" ? ["reports"] : []),
+                            ]
+                          : []),
+                      ];
   const navLabels: Record<string, string> = {
     overview:
       role === "shipper"
@@ -204,6 +250,12 @@ export default function App() {
     demo: "Demo scenarios",
     audit: "Audit & trust",
     reports: "Navigation reports",
+    optimization: "Fleet optimization",
+    resources: "Terminal resources",
+    evidence: "Evidence & delivery",
+    administration: "Users & providers",
+    judge: "Judge demo",
+    finance: "Settlements & disputes",
   };
   const [heading, subtitle] = intros[role] || intros.shipper;
   return (
@@ -249,16 +301,18 @@ export default function App() {
               <ArrowUpRight size={14} />
             </span>
           </div>
-          <button
-            className="sidebar-link"
-            onClick={() => {
-              setRole("admin");
-              setView("demo");
-            }}
-          >
-            <Settings2 size={18} />
-            Demo & settings
-          </button>
+          {data?.demo_mode && (
+            <button
+              className="sidebar-link"
+              onClick={() => {
+                setRole("admin");
+                setView("demo");
+              }}
+            >
+              <Settings2 size={18} />
+              Demo & settings
+            </button>
+          )}
           <div className="identity">
             <span className="avatar">{role === "shipper" ? "MB" : "JA"}</span>
             <div>
@@ -287,21 +341,23 @@ export default function App() {
               <i />
               Demo network
             </span>
-            <label className="role-select">
-              <span className="sr-only">Demo role</span>
-              <select
-                aria-label="Demo role"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-              >
-                {Object.entries(roles).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={14} />
-            </label>
+            {data?.demo_mode && (
+              <label className="role-select">
+                <span className="sr-only">Demo role</span>
+                <select
+                  aria-label="Demo role"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                >
+                  {Object.entries(roles).map(([k, v]) => (
+                    <option key={k} value={k}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={14} />
+              </label>
+            )}
             <button
               className="icon-button"
               aria-label="Refresh workspace"
@@ -350,6 +406,41 @@ export default function App() {
                 <X size={16} />
               </button>
             </div>
+          )}
+          {resolvedRecord && (
+            <Panel
+              title="Authorized QR record"
+              action={
+                <button
+                  className="button small"
+                  onClick={() => {
+                    setResolvedRecord(null);
+                    window.location.hash = "";
+                  }}
+                >
+                  Close record
+                </button>
+              }
+            >
+              <h3>
+                {resolvedRecord.cargo_type} · {resolvedRecord.weight_tonnes} t
+              </h3>
+              <p>
+                {resolvedRecord.origin} → {resolvedRecord.destination}
+              </p>
+              <small>{resolvedRecord.id}</small>
+              <button
+                className="button"
+                onClick={() => {
+                  setView(
+                    resolvedRecord.kind === "cargo" ? "cargo" : "tracking",
+                  );
+                  setResolvedRecord(null);
+                }}
+              >
+                View authorized workspace record
+              </button>
+            </Panel>
           )}
           {!data ? (
             <Loading />

@@ -14,6 +14,16 @@ import Intake from "./Intake";
 import Tracking, { downloadDocument } from "./Tracking";
 import Operator from "./Operator";
 import Government from "./Government";
+import {
+  RecurringServices,
+  FleetOptimization,
+  TerminalResources,
+} from "./Advanced";
+import Evidence from "./Evidence";
+import Administration from "./Administration";
+import NetworkIntelligence from "./NetworkIntelligence";
+import JudgeDemo from "./JudgeDemo";
+import OperationalTasks, { TruckAppointments } from "./OperationalTasks";
 
 type Props = {
   data: Data;
@@ -25,6 +35,19 @@ type Props = {
 };
 export default function Workspaces(props: Props) {
   const { data, role, view, act, busy, setView } = props;
+  if (view === "evidence") return <Evidence {...props} />;
+  if (view === "judge") return <JudgeDemo {...props} />;
+  if (view === "finance") return <Finance {...props} />;
+  if (view === "administration") return <Administration {...props} />;
+  if (view === "intelligence") return <NetworkIntelligence {...props} />;
+  if (view === "optimization") return <FleetOptimization {...props} />;
+  if (view === "resources")
+    return (
+      <>
+        <TerminalResources {...props} />
+        <TruckAppointments {...props} />
+      </>
+    );
   if (
     view === "tracking" ||
     (role === "captain" && view === "overview") ||
@@ -41,8 +64,20 @@ export default function Workspaces(props: Props) {
         close={() => setView("overview")}
       />
     );
-  if (view === "services") return <Services {...props} />;
-  if (view === "fleet" || role === "fleet") return <Fleet {...props} />;
+  if (view === "services")
+    return (
+      <>
+        <Services {...props} />
+        <RecurringServices {...props} />
+      </>
+    );
+  if (view === "fleet" || role === "fleet")
+    return (
+      <>
+        <Fleet {...props} />
+        <OperationalTasks {...props} />
+      </>
+    );
   if (view === "reports") return <Reports {...props} />;
   if (view === "demo") return <Demo {...props} />;
   if (view === "audit") return <Audit data={data} />;
@@ -52,7 +87,13 @@ export default function Workspaces(props: Props) {
     return <Operator data={data} role={role} setView={setView} />;
   if (role === "control") return <Control {...props} />;
   if (["warehouse", "receiver"].includes(role)) return <Handover {...props} />;
-  if (role === "terminal") return <Terminal {...props} />;
+  if (role === "terminal")
+    return (
+      <>
+        <Terminal {...props} />
+        <OperationalTasks {...props} />
+      </>
+    );
   if (role === "finance") return <Finance {...props} />;
   if (role === "maintenance") return <Maintenance {...props} />;
   if (role === "compliance") return <Compliance {...props} />;
@@ -502,6 +543,26 @@ function Handover({ data, role, act, busy }: Props) {
                       />
                       Handover confirmed
                     </label>
+                    <label className="checkbox">
+                      <input
+                        type="checkbox"
+                        checked={f.gate_out || false}
+                        onChange={(e) => update("gate_out", e.target.checked)}
+                      />
+                      Gate out recorded
+                    </label>
+                    <label className="field wide">
+                      Loading sequence (one package per line)
+                      <textarea
+                        value={(f.loading_sequence || []).join("\n")}
+                        onChange={(e) =>
+                          update(
+                            "loading_sequence",
+                            e.target.value.split("\n").filter(Boolean),
+                          )
+                        }
+                      />
+                    </label>
                   </>
                 )}
               </div>
@@ -548,7 +609,9 @@ function Handover({ data, role, act, busy }: Props) {
                 </button>
               </div>
               <small>
-                Saved: {JSON.stringify(item.shipment.operational_data)}
+                {receiver
+                  ? `Receipt: ${item.shipment.operational_data?.delivery_signature || "awaiting receiver"}; ${item.shipment.operational_data?.quantity_received_tonnes ?? "unconfirmed"} t received.`
+                  : `Packing ${item.shipment.operational_data?.packing_ready ? "complete" : "pending"}; handover ${item.shipment.operational_data?.handover_confirmed ? "confirmed" : "pending"}; gate out ${item.shipment.operational_data?.gate_out ? "recorded" : "pending"}.`}
               </small>
             </div>
           );
@@ -642,6 +705,7 @@ function Terminal({ data }: Props) {
 }
 
 function Finance({ data, role, act, busy }: Props) {
+  const [history, setHistory] = useState<Record<string, Data>>({});
   return (
     <>
       <div className="stats-row">
@@ -757,7 +821,49 @@ function Finance({ data, role, act, busy }: Props) {
                     Record dispute
                   </button>
                 )}
+                {p.status === "DISPUTED" && (
+                  <button
+                    className="button"
+                    disabled={busy}
+                    onClick={() =>
+                      act(
+                        () =>
+                          api(`/payments/${p.id}/status`, role, {
+                            status: "PENDING",
+                            dispute:
+                              "Reviewed and resolved as prototype record",
+                          }),
+                        "Dispute resolved; payment returned to pending.",
+                      )
+                    }
+                  >
+                    Resolve prototype dispute
+                  </button>
+                )}
+                <button
+                  className="button small"
+                  onClick={() =>
+                    act(async () => {
+                      const result = await api(
+                        `/payments/${p.id}/history`,
+                        role,
+                      );
+                      setHistory((h) => ({ ...h, [p.id]: result }));
+                    }, "History refreshed.")
+                  }
+                >
+                  Payment history
+                </button>
               </div>
+              {history[p.id] && (
+                <div className="notice-list">
+                  {history[p.id].events.map((e: Data) => (
+                    <p key={e.id}>
+                      {date(e.timestamp)} · {e.details.status || e.event}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
@@ -935,7 +1041,9 @@ function Compliance({ data, role, act, busy }: Props) {
 function Reports({ data, role, act, busy }: Props) {
   const [segment, setSegment] = useState(data.segments[0]?.id || ""),
     [type, setType] = useState("OBSTRUCTION"),
-    [text, setText] = useState("");
+    [text, setText] = useState(""),
+    [reviewNote, setReviewNote] = useState(""),
+    [photos, setPhotos] = useState<Record<string, Data[]>>({});
   return (
     <Panel
       title="Navigation observations"
@@ -964,6 +1072,7 @@ function Reports({ data, role, act, busy }: Props) {
                 "DEBRIS",
                 "DELAY",
                 "HAZARD",
+                "OTHER",
               ].map((t) => (
                 <option key={t}>{t}</option>
               ))}
@@ -984,7 +1093,15 @@ function Reports({ data, role, act, busy }: Props) {
                   segment_id: segment,
                   report_type: type,
                   description: text,
-                  coordinates: [9.748, 76.396],
+                  coordinates: (() => {
+                    const node = data.nodes.find(
+                      (n: Data) =>
+                        n.id ===
+                        data.segments.find((s: Data) => s.id === segment)
+                          ?.source_node,
+                    );
+                    return [node.latitude, node.longitude];
+                  })(),
                 }),
               "Report stored as unverified.",
             )
@@ -993,6 +1110,15 @@ function Reports({ data, role, act, busy }: Props) {
           Submit observation
         </button>
       </div>
+      {["admin", "network"].includes(role) && (
+        <label className="field">
+          Review reason
+          <input
+            value={reviewNote}
+            onChange={(e) => setReviewNote(e.target.value)}
+          />
+        </label>
+      )}
       {data.reports.map((r: Data) => (
         <div className="report-card" key={r.id}>
           <h3>
@@ -1003,6 +1129,103 @@ function Reports({ data, role, act, busy }: Props) {
           <small>
             Expires {date(r.expires_at)} · no automatic official restriction
           </small>
+          <div className="shipment-actions">
+            {["admin", "network"].includes(role) &&
+              ["VERIFIED", "DISPUTED"].map((status) => (
+                <button
+                  className="button small"
+                  key={status}
+                  disabled={busy || reviewNote.length < 3}
+                  onClick={() =>
+                    act(
+                      () =>
+                        api(
+                          `/reports/${r.id}`,
+                          role,
+                          {
+                            verification_status: status,
+                            confidence: status === "VERIFIED" ? 0.8 : 0.2,
+                            note: reviewNote,
+                            promote_restriction: false,
+                          },
+                          "PATCH",
+                        ),
+                      "Platform review recorded.",
+                    )
+                  }
+                >
+                  {status === "VERIFIED"
+                    ? "Verify observation"
+                    : "Dispute observation"}
+                </button>
+              ))}
+            {["admin", "network"].includes(role) &&
+              r.verification_status === "VERIFIED" && (
+                <button
+                  className="button danger small"
+                  disabled={busy || reviewNote.length < 3}
+                  onClick={() =>
+                    act(
+                      () =>
+                        api(
+                          `/reports/${r.id}`,
+                          role,
+                          {
+                            verification_status: "VERIFIED",
+                            confidence: r.confidence,
+                            note: reviewNote,
+                            promote_restriction: true,
+                          },
+                          "PATCH",
+                        ),
+                      "Conservative temporary closure explicitly created.",
+                    )
+                  }
+                >
+                  Approve temporary restriction
+                </button>
+              )}
+            <button
+              className="button small"
+              disabled={busy}
+              onClick={() =>
+                act(async () => {
+                  const response = await api(`/reports/${r.id}/photos`, role);
+                  setPhotos((p) => ({ ...p, [r.id]: response.photos }));
+                }, "Observation photos loaded.")
+              }
+            >
+              View observation photos
+            </button>
+            {(r.reporter_id === data.actor.id ||
+              ["admin", "network"].includes(role)) && (
+              <label className="field">
+                Attach observation photo
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  disabled={busy}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file)
+                      act(async () => {
+                        const form = new FormData();
+                        form.append("file", file);
+                        await api(`/reports/${r.id}/photos`, role, form);
+                      }, "Photo attached to observation.");
+                  }}
+                />
+              </label>
+            )}
+          </div>
+          {photos[r.id]?.map((photo) => (
+            <img
+              key={photo.id}
+              src={photo.data_url}
+              alt="Uploaded waterway observation"
+              style={{ maxWidth: 240, maxHeight: 180 }}
+            />
+          ))}
         </div>
       ))}
     </Panel>

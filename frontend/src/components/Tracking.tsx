@@ -44,6 +44,7 @@ export default function Tracking({
     [tracking, setTracking] = useState<Data | null>(null),
     [recovery, setRecovery] = useState<Data | null>(null),
     [error, setError] = useState("");
+  const [disruptionKind, setDisruptionKind] = useState("TRUCK_LATE");
   const current =
     data.shipments.find((s: Data) => s.shipment.id === selected) ||
     data.shipments[0];
@@ -72,6 +73,57 @@ export default function Tracking({
   };
   return (
     <>
+      {canRecover && data.demo_mode && (
+        <Panel title="Operational disruption simulation">
+          <div className="form-content">
+            <label className="field">
+              Disruption type
+              <select
+                value={disruptionKind}
+                onChange={(e) => setDisruptionKind(e.target.value)}
+              >
+                {[
+                  "EQUIPMENT_UNAVAILABLE",
+                  "SHIPMENT_NOT_READY",
+                  "TRUCK_LATE",
+                  "SERVICE_CANCELLED",
+                  "CAPACITY_REDUCED",
+                  "TERMINAL_CLOSED",
+                ].map((kind) => (
+                  <option key={kind}>{kind}</option>
+                ))}
+              </select>
+            </label>
+            <button
+              className="button"
+              disabled={
+                busy ||
+                !current ||
+                !["CONFIRMED", "SCHEDULED"].includes(current.shipment.status)
+              }
+              onClick={() =>
+                act(
+                  async () =>
+                    setRecovery(
+                      await api(
+                        `/bookings/${current.booking.id}/disrupt`,
+                        role,
+                        { kind: disruptionKind, delay_minutes: 60 },
+                      ),
+                    ),
+                  "Disruption recorded; review revalidated alternatives.",
+                )
+              }
+            >
+              Simulate selected disruption
+            </button>
+            <small>
+              Uses the selected shipment. Other records are preserved; affected
+              bookings are identified before replanning.
+            </small>
+          </div>
+        </Panel>
+      )}
       {error && (
         <div className="alert error" role="alert">
           {error}
@@ -266,12 +318,20 @@ export default function Tracking({
             cargo requires separate approval.
           </div>
           {recovery.alternatives.map((a: Data) => (
-            <div className="service-card" key={a.vessel_id || a.mode}>
+            <div
+              className="service-card"
+              key={`${a.vessel_id || a.mode}-${a.service_id || "on-demand"}`}
+            >
               <div>
                 <h3>{a.vessel_name}</h3>
                 <p>
                   {a.mode} · ETA {date(a.plan.eta)} · {money(a.additional_cost)}{" "}
                   cost change
+                </p>
+                <p>
+                  Old ETA {date(recovery.old_plan?.eta)} → new ETA{" "}
+                  {date(a.plan.eta)} · {a.eta_change_minutes} minutes ·{" "}
+                  {a.reason}
                 </p>
                 <Badge value={a.sla ? "SLA_PASS" : "SLA_FAIL"} />
               </div>
@@ -284,6 +344,7 @@ export default function Tracking({
                       vessel_id: a.vessel_id,
                       mode: a.mode,
                       approved: true,
+                      service_id: a.service_id || null,
                     });
                     setRecovery(null);
                   }, "Recovery approved and shipment rescheduled.")
@@ -291,6 +352,28 @@ export default function Tracking({
               >
                 Approve {title(a.mode).toLowerCase()} recovery
               </button>
+              {current.booking.pool_id && !a.service_id && (
+                <button
+                  className="button"
+                  disabled={busy}
+                  onClick={() =>
+                    act(async () => {
+                      await api(
+                        `/bookings/${current.booking.id}/recover-pool`,
+                        role,
+                        {
+                          vessel_id: a.vessel_id,
+                          mode: a.mode,
+                          approved: true,
+                        },
+                      );
+                      setRecovery(null);
+                    }, "Whole pool explicitly approved and revalidated on one replacement voyage.")
+                  }
+                >
+                  Approve whole-pool recovery
+                </button>
+              )}
             </div>
           ))}
           {!recovery.alternatives.length && (

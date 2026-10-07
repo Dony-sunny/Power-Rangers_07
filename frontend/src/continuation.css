@@ -1,0 +1,93 @@
+.label-preview {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 20px;
+}
+.label-preview img {
+  background: white;
+}
+.evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.evidence-grid figure {
+  margin: 0;
+  border: 1px solid var(--border, #dce5e0);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.evidence-grid img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+.evidence-grid figcaption {
+  padding: 12px;
+}
+.two-column {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.two-column .checkbox {
+  display: flex;
+  margin: 12px 0;
+}
+.table-scroll select {
+  max-width: 210px;
+}
+details.notice-list {
+  padding: 16px;
+}
+details.notice-list summary {
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+@media (max-width: 700px) {
+  .two-column {
+    grid-template-columns: 1fr;
+  }
+  .label-preview {
+    padding: 8px;
+  }
+  .metric-summary {
+    flex-wrap: wrap;
+  }
+  .table-scroll table {
+    min-width: 600px;
+  }
+}
+.judge-checkpoints {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin: 24px 0;
+}
+.judge-step {
+  padding: 12px;
+  border: 1px solid #dce5e0;
+  border-radius: 10px;
+}
+.judge-step span {
+  display: block;
+  font-weight: 700;
+  color: #287866;
+}
+.judge-step strong {
+  display: block;
+  margin: 8px 0;
+}
+.judge-step small {
+  font-size: 11px;
+  color: #62776f;
+}
+.judge-step.current {
+  border-color: #287866;
+  background: #eef7f2;
+}
+.judge-step.complete {
+  background: #f2f6f2;
+}

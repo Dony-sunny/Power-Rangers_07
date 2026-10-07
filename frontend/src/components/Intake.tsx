@@ -9,7 +9,7 @@ import {
   Check,
   Keyboard,
 } from "lucide-react";
-import { api, type Data, type Cargo } from "../api";
+import { api, download, type Data, type Cargo } from "../api";
 import { Panel, Badge } from "./UI";
 
 const places = [
@@ -23,7 +23,13 @@ const places = [
 const sample =
   "80 tonnes of cement, bagged, 60 m3, from Kalamassery to Alappuzha. Ready tomorrow 08:00; deliver by tomorrow 22:00. Non-hazardous.";
 const voiceSample = "Nale 150 ton barge Kochi-ninnu Alappuzha-kku kaali aanu.";
-const inputTime = (value: string) => (value ? value.slice(0, 16) : "");
+const inputTime = (value: string) =>
+  value
+    ? new Date(value)
+        .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
+        .replace(" ", "T")
+        .slice(0, 16)
+    : "";
 const isoTime = (value: string) =>
   new Date(value.length === 16 ? value + ":00+05:30" : value).toISOString();
 
@@ -326,7 +332,7 @@ export default function Intake({
                   text: "Describe cargo",
                   document: "Upload document",
                   manual: "Manual entry",
-                  bulk: "Bulk CSV",
+                  bulk: "Bulk CSV / XLSX",
                   voice: "Voice / transcript",
                 }[t]
               }
@@ -404,19 +410,21 @@ export default function Intake({
               <FileText size={28} />
               <strong>
                 {tab === "bulk"
-                  ? "Bulk CSV preview"
+                  ? "Bulk spreadsheet preview"
                   : "Purchase order, invoice or BOQ"}
               </strong>
               <small>
                 {tab === "bulk"
-                  ? "CSV with CargoRequest field names"
-                  : "Text-based PDF, TXT, CSV, PNG or JPEG · max 8 MB"}
+                  ? "CSV or XLSX · 200 rows · timezone-aware dates"
+                  : "Text or scanned PDF, TXT, PNG or JPEG · max 8 MB"}
               </small>
               <input
                 aria-label="Cargo document"
                 type="file"
                 accept={
-                  tab === "bulk" ? ".csv" : ".pdf,.txt,.csv,.png,.jpg,.jpeg"
+                  tab === "bulk"
+                    ? ".csv,.xlsx"
+                    : ".pdf,.txt,.csv,.png,.jpg,.jpeg"
                 }
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
               />
@@ -429,9 +437,23 @@ export default function Intake({
               {busy
                 ? "Reading…"
                 : tab === "bulk"
-                  ? "Validate CSV"
+                  ? "Validate spreadsheet"
                   : "Extract document"}
             </button>
+            {tab === "bulk" && (
+              <button
+                className="button"
+                onClick={() =>
+                  download(
+                    "/intake/cargo/bulk-template",
+                    role,
+                    "jalayatra-cargo-template.xlsx",
+                  ).catch((e) => setError(e.message))
+                }
+              >
+                Download XLSX template
+              </button>
+            )}
           </>
         )}
         {bulk && (
@@ -440,6 +462,16 @@ export default function Intake({
             {bulk.rows.map((r: Data) => (
               <div className="report-card" key={r.row}>
                 Row {r.row}: <Badge value={r.valid ? "PASS" : "FAIL"} />
+                {r.valid && (
+                  <p>
+                    {r.reference || "No reference"} · {r.fields.cargo_type} ·{" "}
+                    {r.fields.weight_tonnes} t · {r.fields.origin} →{" "}
+                    {r.fields.destination}
+                  </p>
+                )}
+                {r.warnings.map((warning: string) => (
+                  <small key={warning}>{warning}</small>
+                ))}
                 {!r.valid && (
                   <small>{r.errors.map((e: Data) => e.msg).join("; ")}</small>
                 )}
@@ -447,12 +479,15 @@ export default function Intake({
             ))}
             <button
               className="button primary"
-              disabled={busy || bulk.rows.some((r: Data) => !r.valid)}
+              disabled={busy || !bulk.valid_count}
               onClick={async () => {
                 setBusy(true);
                 try {
-                  for (const r of bulk.rows)
-                    await api("/cargo", role, r.fields);
+                  await api(
+                    `/intake/cargo/bulk-import/${bulk.preview_id}?approved=true`,
+                    role,
+                    {},
+                  );
                   await done();
                 } catch (e) {
                   setError((e as Error).message);
@@ -461,7 +496,22 @@ export default function Intake({
                 }
               }}
             >
-              Confirm and create {bulk.rows.length} requests
+              Import {bulk.valid_count} valid rows only
+            </button>
+            <button
+              className="button"
+              onClick={() =>
+                download(
+                  `/intake/cargo/bulk-preview/${bulk.preview_id}/errors`,
+                  role,
+                  "import-errors.csv",
+                ).catch((e) => setError(e.message))
+              }
+            >
+              Download error report
+            </button>
+            <button className="button" onClick={() => setBulk(null)}>
+              Cancel import
             </button>
           </div>
         )}
@@ -486,6 +536,15 @@ export default function Intake({
                 </div>
                 {extraction.transcript && (
                   <p className="role-intro">
+                    <Badge
+                      value={
+                        extraction.transcription_source === "configured_stt"
+                          ? "LIVE SPEECH"
+                          : extraction.transcription_source.includes("demo")
+                            ? "DEMO TRANSCRIPT FALLBACK"
+                            : "TYPED TRANSCRIPT"
+                      }
+                    />
                     Transcript: “{extraction.transcript}”
                     <small>{extraction.transcription_source}</small>
                   </p>
@@ -495,6 +554,36 @@ export default function Intake({
                     {w}
                   </div>
                 ))}
+                {extraction.document_recognition && (
+                  <p className="provenance-mini">
+                    Document recognition:{" "}
+                    {extraction.document_recognition.source} · recognition
+                    confidence{" "}
+                    {extraction.document_recognition.confidence ??
+                      "unavailable"}
+                  </p>
+                )}
+                <p className="provenance-mini">
+                  Extraction review:{" "}
+                  {extraction.is_ai
+                    ? "provider-supplied values require confirmation"
+                    : "local rules identified explicit fields"}
+                  . Extraction confidence is heuristic and is not measured model
+                  accuracy. Missing or uncertain information requires manual
+                  review.
+                </p>
+                {extraction.document_details && (
+                  <div className="cost-details">
+                    {Object.entries(extraction.document_details)
+                      .filter(([, value]) => value !== null)
+                      .map(([key, value]) => (
+                        <div key={key}>
+                          <span>{key.replaceAll("_", " ")}</span>
+                          <strong>{String(value)}</strong>
+                        </div>
+                      ))}
+                  </div>
+                )}
                 {extraction.missing_fields.length > 0 && (
                   <p className="provenance-mini">
                     Missing from input: {extraction.missing_fields.join(", ")}.

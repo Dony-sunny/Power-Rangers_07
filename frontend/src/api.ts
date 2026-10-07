@@ -25,6 +25,11 @@ export async function api<T = Data>(
     method: method || (body ? "POST" : "GET"),
     headers: {
       "X-Demo-Role": role,
+      ...(sessionStorage.getItem("jalayatra-token")
+        ? {
+            Authorization: `Bearer ${sessionStorage.getItem("jalayatra-token")}`,
+          }
+        : {}),
       ...(body instanceof FormData
         ? {}
         : { "Content-Type": "application/json" }),
@@ -51,6 +56,25 @@ export async function api<T = Data>(
     );
   }
   return result;
+}
+export async function download(path: string, role: string, filename: string) {
+  const response = await fetch(`/api${path}`, {
+    headers: {
+      "X-Demo-Role": role,
+      ...(sessionStorage.getItem("jalayatra-token")
+        ? {
+            Authorization: `Bearer ${sessionStorage.getItem("jalayatra-token")}`,
+          }
+        : {}),
+    },
+  });
+  if (!response.ok) throw new Error("Download unavailable or unauthorized.");
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export const money = (n: number | null | undefined) =>
   n == null
