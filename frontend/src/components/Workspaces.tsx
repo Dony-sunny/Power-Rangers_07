@@ -770,24 +770,25 @@ function Finance({ data, role, act, busy }: Props) {
                 >
                   Invoice draft
                 </button>
-                {p.status === "PENDING" && (
-                  <button
-                    className="button primary small"
-                    disabled={busy}
-                    onClick={() =>
-                      act(
-                        () =>
-                          api(`/payments/${p.id}/status`, role, {
-                            status: "PAID",
-                          }),
-                        "Demo payment marked paid.",
-                      )
-                    }
-                  >
-                    Mark demo payment paid
-                  </button>
-                )}
-                {p.status === "PAID" && (
+                {["finance", "admin"].includes(role) &&
+                  p.status === "PENDING" && (
+                    <button
+                      className="button primary small"
+                      disabled={busy}
+                      onClick={() =>
+                        act(
+                          () =>
+                            api(`/payments/${p.id}/status`, role, {
+                              status: "PAID",
+                            }),
+                          "Demo payment marked paid.",
+                        )
+                      }
+                    >
+                      Mark demo payment paid
+                    </button>
+                  )}
+                {["finance", "admin"].includes(role) && p.status === "PAID" && (
                   <button
                     className="button primary small"
                     disabled={busy}
@@ -804,23 +805,24 @@ function Finance({ data, role, act, busy }: Props) {
                     Settle after delivery
                   </button>
                 )}
-                {["PENDING", "PAID"].includes(p.status) && (
-                  <button
-                    className="button small"
-                    onClick={() =>
-                      act(
-                        () =>
-                          api(`/payments/${p.id}/status`, role, {
-                            status: "DISPUTED",
-                            dispute: "Demo dispute raised for review",
-                          }),
-                        "Dispute recorded.",
-                      )
-                    }
-                  >
-                    Record dispute
-                  </button>
-                )}
+                {["finance", "admin"].includes(role) &&
+                  ["PENDING", "PAID"].includes(p.status) && (
+                    <button
+                      className="button small"
+                      onClick={() =>
+                        act(
+                          () =>
+                            api(`/payments/${p.id}/status`, role, {
+                              status: "DISPUTED",
+                              dispute: "Demo dispute raised for review",
+                            }),
+                          "Dispute recorded.",
+                        )
+                      }
+                    >
+                      Record dispute
+                    </button>
+                  )}
                 {p.status === "DISPUTED" && (
                   <button
                     className="button"

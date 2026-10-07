@@ -24,6 +24,8 @@ import Marketplace from "./components/Marketplace";
 import Posting from "./components/Posting";
 import LogisticsMarketplace from "./components/LogisticsMarketplace";
 import BoatRegistration from "./components/BoatRegistration";
+import TeamWorkspace from "./components/TeamWorkspace";
+import { groupForRole, workspaceGroups } from "./workspaceGroups";
 
 export const roles: Record<string, string> = {
   shipper: "Cargo owner",
@@ -41,12 +43,18 @@ const pageLabels: Record<string, string> = {
   demand: "Find cargo",
   providers: "Provider jobs",
   coverage: "Challenge coverage",
+  team: "Team tools",
 };
 
 export default function App() {
   const [role, setRole] = useState(() => {
     const saved = localStorage.getItem("jalayatra-role");
-    return saved && roles[saved] ? saved : "shipper";
+    return saved &&
+      Object.values(workspaceGroups)
+        .flat()
+        .some((team) => team.id === saved)
+      ? saved
+      : "shipper";
   });
   const [view, setView] = useState("overview");
   const [data, setData] = useState<Data | null>(null);
@@ -68,13 +76,19 @@ export default function App() {
     const snapshot = await api("/workspace", role);
     if (activeContext.current !== `${role}:${operatorUser}`) return;
     setData(snapshot);
-    if (!snapshot.demo_mode && snapshot.actor.role_id !== role)
+    if (!snapshot.demo_mode && snapshot.actor.role_id !== role) {
       setRole(snapshot.actor.role_id);
+      if (!roles[snapshot.actor.role_id]) setView("team");
+    }
   }, [role, operatorUser]);
   useEffect(() => {
     setData(null);
     localStorage.setItem("jalayatra-role", role);
-    load().catch((e) => setError(e.message));
+    const context = `${role}:${operatorUser}`;
+    load().catch(
+      (e) => activeContext.current === context && setError(e.message),
+    );
+    if (!roles[role]) setView("team");
   }, [load, role]);
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -101,14 +115,15 @@ export default function App() {
     setError("");
   }
   const act: Act = async (task, message = "Saved successfully.") => {
+    const context = activeContext.current;
     setBusy(true);
     setError("");
     try {
       await task();
       await load();
-      setNotice(message);
+      if (activeContext.current === context) setNotice(message);
     } catch (e) {
-      setError((e as Error).message);
+      if (activeContext.current === context) setError((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -131,12 +146,21 @@ export default function App() {
     setVesselId(boat);
     navigate("voice");
   }
-  const nav =
-    role === "shipper"
-      ? ["overview", "cargo", "tracking", "coverage"]
+  const nav = !roles[role]
+    ? ["team"]
+    : role === "shipper"
+      ? ["overview", "cargo", "tracking", "coverage", "team"]
       : role === "operator"
-        ? ["overview", "demand", "fleet", "voice", "tracking", "coverage"]
-        : ["overview", "providers", "planner", "tracking", "coverage"];
+        ? [
+            "overview",
+            "demand",
+            "fleet",
+            "voice",
+            "tracking",
+            "coverage",
+            "team",
+          ]
+        : ["overview", "providers", "planner", "tracking", "coverage", "team"];
   const ready =
     data &&
     data.actor.role_id === role &&
@@ -209,7 +233,7 @@ export default function App() {
             <span>Demo workspace</span>
             <select
               aria-label="Demo role"
-              value={role}
+              value={groupForRole(role)}
               onChange={(e) => {
                 setSearch("");
                 setQuery("");
@@ -267,17 +291,21 @@ export default function App() {
         <button
           className="market-post"
           onClick={() =>
-            role === "operator"
-              ? listBoat()
-              : navigate(role === "control" ? "planner" : "posting")
+            !roles[role]
+              ? navigate("team")
+              : role === "operator"
+                ? listBoat()
+                : navigate(role === "control" ? "planner" : "posting")
           }
         >
           <Plus size={17} />
-          {role === "operator"
-            ? "List your boat"
-            : role === "control"
-              ? "Plan a delivery"
-              : "Post cargo"}
+          {!roles[role]
+            ? "Team tools"
+            : role === "operator"
+              ? "List your boat"
+              : role === "control"
+                ? "Plan a delivery"
+                : "Post cargo"}
         </button>
       </div>
       <div className="market-assurance">
@@ -335,6 +363,19 @@ export default function App() {
           )
         ) : (
           <>
+            {view === "team" && (
+              <TeamWorkspace
+                key={`${role}-${operatorUser}`}
+                data={data}
+                group={groupForRole(role)}
+                act={act}
+                busy={busy}
+                openPlanner={(id) => {
+                  setCargoId(id);
+                  navigate("overview");
+                }}
+              />
+            )}
             {role === "shipper" && view === "overview" && (
               <Marketplace
                 data={data}

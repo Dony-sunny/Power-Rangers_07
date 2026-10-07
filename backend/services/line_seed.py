@@ -8,8 +8,10 @@ def seed_lines(db):
     """Idempotent additive demo setup; never reset customer records."""
     if not db.get(CoordinationGrant, "demo-coordination"):
         db.add(CoordinationGrant(id="demo-coordination", owner_org_id="shipper-org", coordinator_org_id="3pl-org"))
-    if not db.get(User, "demo-pamba-operator"):
-        db.add(User(id="demo-pamba-operator", organization_id="other-operator", role_id="operator", name="Pamba demo operator"))
+    for role in ["operator", "fleet", "captain", "maintenance"]:
+        key = f"demo-pamba-{role}"
+        if not db.get(User, key):
+            db.add(User(id=key, organization_id="other-operator", role_id=role, name=f"Pamba demo {role}"))
     for terminal in db.scalars(select(Terminal)):
         if db.scalar(select(TerminalRateCard).where(TerminalRateCard.terminal_id == terminal.id)):
             continue

@@ -50,13 +50,31 @@ def coordinate(actor, voyage):
 
 
 def view_access(db, actor, voyage):
+    if actor.role_id in {"admin", "government", "network", "compliance"}:
+        return
     if actor.role_id == "control" and actor.organization_id == voyage.coordinator_org_id:
         return
-    if actor.role_id == "operator" and voyage.vessel_id and db.get(Vessel, voyage.vessel_id).organization_id == actor.organization_id:
+    if actor.role_id in {"operator", "fleet", "captain", "maintenance"} and voyage.vessel_id and db.get(Vessel, voyage.vessel_id).organization_id == actor.organization_id:
         return
-    if actor.role_id == "shipper" and any(db.get(CargoRequest, m.cargo_id).organization_id == actor.organization_id for m in members(db, voyage)):
+    if actor.role_id in {"shipper", "dispatch", "warehouse", "receiver", "finance"} and any(db.get(CargoRequest, m.cargo_id).organization_id == actor.organization_id for m in members(db, voyage)):
+        return
+    if actor.role_id == "terminal" and any(job.provider_org_id == actor.organization_id for job in jobs(db, voyage)):
         return
     raise HTTPException(404, "Departure not found.")
+
+
+def can_record_milestone(db, actor, voyage, status):
+    if actor.role_id == "control":
+        return actor.organization_id == voyage.coordinator_org_id
+    if actor.role_id in {"operator", "fleet", "captain"}:
+        return db.get(Vessel, voyage.vessel_id).organization_id == actor.organization_id
+    if actor.role_id == "dispatch":
+        active = [m for m in members(db, voyage) if m.status not in {"CANCELLED", "DELIVERED"}]
+        return bool(active) and all(db.get(CargoRequest, m.cargo_id).organization_id == actor.organization_id for m in active)
+    if actor.role_id == "terminal" and status in {"LOADING", "UNLOADING"}:
+        operation = "LOAD" if status == "LOADING" else "UNLOAD"
+        return any(job.provider_org_id == actor.organization_id and job.kind.startswith(operation + "_") for job in jobs(db, voyage))
+    return False
 
 
 def release(db, voyage, state):
@@ -401,31 +419,32 @@ def serialize(db, actor, voyage):
         "service_owner": db.get(Organization, voyage.coordinator_org_id).name, "dispatcher_id": voyage.dispatcher_id,
         "commitment_policy": voyage.plan["commitment_policy"], "weight_tonnes": weight, "utilization": weight / db.get(Vessel, voyage.vessel_id).max_capacity_tonnes,
         "source": "SIMULATED", "members": [], "jobs": [], "parent_id": voyage.parent_id}
-    if actor.role_id in {"control", "operator"}:
+    if actor.role_id in {"control", "operator", "admin"}:
         result["projected_economics"] = voyage.plan["economics"]
         result["accepted_economics"] = economics
         result["viability_warning"] = voyage.status == "CONFIRMED" and not economics["covers_modeled_costs"]
     for member in all_members:
         cargo = db.get(CargoRequest, member.cargo_id)
         own = cargo.organization_id == actor.organization_id
-        if actor.role_id == "shipper" and not own:
+        if actor.role_id in {"shipper", "dispatch", "warehouse", "receiver", "finance"} and not own:
             continue
         quote = db.get(LineQuote, member.quote_id)
         booking = db.get(Booking, member.booking_id) if member.booking_id else None
         shipment = db.scalar(select(Shipment).where(Shipment.booking_id == booking.id)) if booking else None
         row = {"cargo_id": cargo.id, "cargo_type": cargo.cargo_type, "weight_tonnes": cargo.weight_tonnes, "origin": cargo.origin, "destination": cargo.destination,
             "eta": quote.snapshot["eta"], "status": booking.status if booking else member.status, "accepted": bool(db.scalar(select(QuoteAcceptance).where(QuoteAcceptance.quote_id == quote.id))),
-            "booking_id": member.booking_id, "shipment_id": shipment.id if shipment else None, "receipt": member.receipt}
-        if actor.role_id == "control" or own and actor.role_id == "shipper":
+            "booking_id": member.booking_id, "shipment_id": shipment.id if shipment else None, "receipt": member.receipt,
+            "delivery_verification": {"required": bool(shipment and shipment.operational_data.get("pod_required")), "verified": bool(shipment and shipment.operational_data.get("pod_verified"))}}
+        if actor.role_id in {"control", "admin"} or own and actor.role_id in {"shipper", "finance"}:
             row["quote"] = {**record(quote), "total_cost": rupees(quote.total_minor)}
             if booking:
                 row["invoice"] = record(db.scalar(select(InvoiceRecord).where(InvoiceRecord.booking_id == booking.id)))
         result["members"].append(row)
     visible_cargos = {m["cargo_id"] for m in result["members"]}
     for job in jobs(db, voyage):
-        if actor.role_id != "shipper" or job.cargo_id is None or job.cargo_id in visible_cargos:
+        if actor.role_id not in {"shipper", "dispatch", "warehouse", "receiver", "finance"} or job.cargo_id is None or job.cargo_id in visible_cargos:
             row = record(job)
-            if actor.role_id == "shipper":
+            if actor.role_id not in {"control", "operator", "admin", "terminal"}:
                 row = {key: row[key] for key in ["id", "kind", "status", "source", "cargo_id", "starts_at", "ends_at"]}
             result["jobs"].append(row)
     quotes_ready = all(db.scalar(select(QuoteAcceptance).where(QuoteAcceptance.quote_id == m.quote_id)) for m in all_members)
@@ -443,13 +462,17 @@ def serialize(db, actor, voyage):
         "DISRUPTED": "Choose a replacement boat and request fresh quotes.",
     }
     result["next_action"] = (closed_actions[voyage.status] if voyage.status in DEAD_VOYAGES else "Approve cargo quotes" if not quotes_ready else "Operator accepts departure" if not result["operator_accepted"] else "Coordinator obtains provider responses" if any(j.status != "ACCEPTED" for j in all_jobs) else "Confirm delivery bundle" if voyage.status == "HELD" else "Coordinator records shipment milestones and receipts")
+    result["allowed_milestones"] = [status for status in ["SCHEDULED", "LOADING", "IN_TRANSIT", "UNLOADING"] if can_record_milestone(db, actor, voyage, status)]
+    result["can_receive"] = actor.role_id == "control" and actor.organization_id == voyage.coordinator_org_id or actor.role_id == "receiver"
     return result
 
 
 def milestones(db, actor, voyage_id, status):
     lock_writes(db)
     voyage = require(db, CargoVoyage, voyage_id)
-    coordinate(actor, voyage)
+    view_access(db, actor, voyage)
+    if not can_record_milestone(db, actor, voyage, status):
+        raise HTTPException(403, "Your operational role cannot record this shared milestone.")
     if voyage.status != "CONFIRMED":
         raise HTTPException(409, "Only a confirmed bundle can execute milestones.")
     sequence = ["CONFIRMED", "SCHEDULED", "LOADING", "IN_TRANSIT", "UNLOADING"]
@@ -467,7 +490,7 @@ def milestones(db, actor, voyage_id, status):
         shipment = db.scalar(select(Shipment).where(Shipment.booking_id == booking.id))
         booking.status = cargo.status = member.status = shipment.status = status
         shipment.progress = progress[status]
-        db.add(TrackingEvent(id=uid("event"), shipment_id=shipment.id, status=status, description="Coordinator recorded shared milestone; position and execution are simulated.", latitude=shipment.latitude, longitude=shipment.longitude, simulated=True))
+        db.add(TrackingEvent(id=uid("event"), shipment_id=shipment.id, status=status, description=f"{actor.role_id} recorded shared milestone; position and execution are simulated.", latitude=shipment.latitude, longitude=shipment.longitude, simulated=True))
     db.get(Vessel, voyage.vessel_id).state = "IN_TRANSIT" if status == "IN_TRANSIT" else "BUSY"
     if status == "UNLOADING":
         for job in jobs(db, voyage):
@@ -481,22 +504,30 @@ def milestones(db, actor, voyage_id, status):
 def receipt(db, actor, voyage_id, cargo_id, quantity, receiver_name):
     lock_writes(db)
     voyage = require(db, CargoVoyage, voyage_id)
-    coordinate(actor, voyage)
+    view_access(db, actor, voyage)
     member = next((m for m in members(db, voyage) if m.cargo_id == cargo_id), None)
     if not member:
         raise HTTPException(404, "Cargo not found on this departure.")
     booking, cargo = db.get(Booking, member.booking_id), db.get(CargoRequest, cargo_id)
+    if actor.role_id == "receiver":
+        if cargo.organization_id != actor.organization_id:
+            raise HTTPException(404, "Consignment not found for this receiver.")
+    else:
+        coordinate(actor, voyage)
     if not booking or booking.status not in {"UNLOADING", "LAST_MILE"}:
         raise HTTPException(409, "Record unloading before recording the individual door receipt.")
     if quantity > cargo.weight_tonnes + 1e-9:
         raise HTTPException(422, "Received quantity exceeds the accepted consignment.")
+    shipment = db.scalar(select(Shipment).where(Shipment.booking_id == booking.id))
+    if shipment.operational_data.get("pod_required") and not shipment.operational_data.get("pod_verified"):
+        raise HTTPException(409, "Verify the active receiver delivery challenge before recording the receipt.")
     now = utcnow().isoformat()
-    member.receipt = {"quantity_tonnes": quantity, "receiver_name": receiver_name, "recorded_by": actor.id, "recorded_at": now, "source": "SIMULATED coordinator receipt; not a verified digital signature", "shortage_tonnes": round(cargo.weight_tonnes - quantity, 3)}
+    member.receipt = {"quantity_tonnes": quantity, "receiver_name": receiver_name, "recorded_by": actor.id, "recorded_at": now, "source": "SIMULATED application receipt; not a legal digital signature", "receiver_verified": bool(shipment.operational_data.get("pod_verified")), "shortage_tonnes": round(cargo.weight_tonnes - quantity, 3)}
     member.status = booking.status = cargo.status = "DELIVERED"
     shipment = db.scalar(select(Shipment).where(Shipment.booking_id == booking.id))
     shipment.status, shipment.progress = "DELIVERED", 1
     shipment.operational_data = {**shipment.operational_data, "quantity_received_tonnes": quantity, "delivery_signature": receiver_name, "receipt_source": "SIMULATED"}
-    db.add(TrackingEvent(id=uid("event"), shipment_id=shipment.id, status="DELIVERED", description="Individual door delivery receipt recorded by coordinator (simulated).", latitude=shipment.latitude, longitude=shipment.longitude))
+    db.add(TrackingEvent(id=uid("event"), shipment_id=shipment.id, status="DELIVERED", description=f"Individual door delivery receipt recorded by {actor.role_id} (simulated).", latitude=shipment.latitude, longitude=shipment.longitude))
     for job in jobs(db, voyage):
         if job.cargo_id == cargo_id and job.status == "ACCEPTED":
             job.status = "COMPLETED"

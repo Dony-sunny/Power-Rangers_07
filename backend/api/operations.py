@@ -109,8 +109,7 @@ def operations(
     shipment = require(db, Shipment, shipment_id)
     booking = require(db, Booking, shipment.booking_id)
     booking_access(db, actor, booking)
-    if db.scalar(select(VoyageMember).where(VoyageMember.booking_id == booking.id)):
-        raise HTTPException(409, "Cargo Lines accepted loads require its quote amendment/receipt workflow.")
+    line_member = db.scalar(select(VoyageMember).where(VoyageMember.booking_id == booking.id))
     updates = payload.model_dump(exclude_none=True)
     warehouse_keys = {
         "actual_weight_tonnes",
@@ -131,6 +130,16 @@ def operations(
     ):
         raise HTTPException(403, "These fields belong to another operational role.")
     cargo = db.get(CargoRequest, booking.cargo_id)
+    if line_member:
+        if payload.actual_volume_m3 is not None and abs(payload.actual_volume_m3 - (cargo.volume_m3 or 0)) > 1e-6:
+            raise HTTPException(409, "Verified volume differs from the accepted quote. Request a new reviewed quote before changing the load.")
+        if payload.truck_assignment is not None:
+            raise HTTPException(409, "Accepted truck resources must be changed through a reviewed departure plan.")
+        if set(updates) & receiver_keys:
+            if shipment.status not in {"UNLOADING", "LAST_MILE", "DELIVERED"}:
+                raise HTTPException(409, "Record delivery acceptance after unloading.")
+            if payload.quantity_received_tonnes is not None and payload.quantity_received_tonnes > cargo.weight_tonnes:
+                raise HTTPException(422, "Received quantity exceeds the accepted consignment.")
     if (
         payload.actual_weight_tonnes
         and abs(payload.actual_weight_tonnes - cargo.weight_tonnes) > 0.01
@@ -139,7 +148,7 @@ def operations(
             409,
             "Actual weight differs from booked weight. Replan and revalidate capacity before loading.",
         )
-    if payload.actual_volume_m3:
+    if payload.actual_volume_m3 and not line_member:
         if shipment.status not in {"CONFIRMED", "SCHEDULED", "LOADING"}:
             raise HTTPException(409, "Volume verification must occur before departure.")
         if booking.vessel_id:

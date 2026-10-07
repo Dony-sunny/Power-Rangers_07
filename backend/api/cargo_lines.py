@@ -109,8 +109,8 @@ def marketplace_cargo(payload: MarketplaceCargo, db=Depends(get_db), actor=Depen
 
 @router.get("")
 def workspace(db=Depends(get_db), actor=Depends(get_actor)):
-    if actor.role_id not in {"shipper", "operator", "control"}:
-        raise HTTPException(403, "Cargo Lines uses shipper, operator and coordinator workspaces.")
+    # Existing team identities retain their scoped operational access beneath
+    # the three customer-facing workspaces. Approval permissions stay separate.
     lines.expire(db)
     db.commit()
     result = []

@@ -21,29 +21,32 @@ export async function api<T = Data>(
   body?: unknown,
   method?: string,
 ): Promise<T> {
-  const response = await fetch(`/api${path}`, {
-    method: method || (body ? "POST" : "GET"),
-    headers: {
-      "X-Demo-Role": role,
-      ...(role === "operator" && localStorage.getItem("jalayatra-operator-user")
-        ? { "X-Demo-User": localStorage.getItem("jalayatra-operator-user")! }
-        : {}),
-      ...(sessionStorage.getItem("jalayatra-token")
-        ? {
-            Authorization: `Bearer ${sessionStorage.getItem("jalayatra-token")}`,
-          }
-        : {}),
-      ...(body instanceof FormData
-        ? {}
-        : { "Content-Type": "application/json" }),
-    },
-    body: body
-      ? body instanceof FormData
-        ? body
-        : JSON.stringify(body)
-      : undefined,
+  let response: Response;
+  try {
+    response = await fetch(`/api${path}`, {
+      method: method || (body ? "POST" : "GET"),
+      headers: {
+        ...identityHeaders(role),
+        ...(body instanceof FormData
+          ? {}
+          : { "Content-Type": "application/json" }),
+      },
+      body: body
+        ? body instanceof FormData
+          ? body
+          : JSON.stringify(body)
+        : undefined,
+    });
+  } catch {
+    throw new Error(
+      "Cannot reach the backend. Check that the server is running and retry.",
+    );
+  }
+  const result = await response.json().catch(() => {
+    throw new Error(
+      `The server returned an unreadable response (${response.status}). Please retry.`,
+    );
   });
-  const result = await response.json();
   if (!response.ok) {
     const detail = result.detail;
     throw new Error(
@@ -60,16 +63,28 @@ export async function api<T = Data>(
   }
   return result;
 }
+export function identityHeaders(role: string): Record<string, string> {
+  const account = localStorage.getItem("jalayatra-operator-user");
+  const operatorTeam = ["operator", "fleet", "captain", "maintenance"].includes(
+    role,
+  );
+  const user =
+    operatorTeam && account === "demo-pamba-operator"
+      ? `demo-pamba-${role}`
+      : operatorTeam
+        ? `demo-${role}`
+        : undefined;
+  return {
+    "X-Demo-Role": role,
+    ...(user ? { "X-Demo-User": user } : {}),
+    ...(sessionStorage.getItem("jalayatra-token")
+      ? { Authorization: `Bearer ${sessionStorage.getItem("jalayatra-token")}` }
+      : {}),
+  };
+}
 export async function download(path: string, role: string, filename: string) {
   const response = await fetch(`/api${path}`, {
-    headers: {
-      "X-Demo-Role": role,
-      ...(sessionStorage.getItem("jalayatra-token")
-        ? {
-            Authorization: `Bearer ${sessionStorage.getItem("jalayatra-token")}`,
-          }
-        : {}),
-    },
+    headers: identityHeaders(role),
   });
   if (!response.ok) throw new Error("Download unavailable or unauthorized.");
   const url = URL.createObjectURL(await response.blob());

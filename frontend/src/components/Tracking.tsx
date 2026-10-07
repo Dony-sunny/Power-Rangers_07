@@ -73,7 +73,7 @@ export default function Tracking({
   };
   return (
     <>
-      {canRecover && data.demo_mode && (
+      {canRecover && data.demo_mode && !current?.booking.voyage_id && (
         <Panel title="Operational disruption simulation">
           <div className="form-content">
             <label className="field">
@@ -178,7 +178,7 @@ export default function Tracking({
                     <FileText size={13} />
                     Manifest
                   </button>
-                  {canExecute && next(item) && (
+                  {canExecute && !item.booking.voyage_id && next(item) && (
                     <button
                       className="button primary small"
                       disabled={busy}
@@ -218,6 +218,7 @@ export default function Tracking({
                   )}
                 </div>
                 {canRecover &&
+                  !item.booking.voyage_id &&
                   ["CONFIRMED", "SCHEDULED"].includes(item.shipment.status) && (
                     <div className="shipment-actions">
                       <button

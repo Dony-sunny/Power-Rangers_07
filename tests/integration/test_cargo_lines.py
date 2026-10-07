@@ -28,6 +28,100 @@ def accepted(client, voyage=None):
     return post(client, f"/{voyage['id']}/confirm")
 
 
+def test_warehouse_can_verify_shared_load_without_amending_accepted_terms(client, db):
+    from backend.models import Shipment
+    voyage = accepted(client)
+    member = voyage["members"][0]
+    shipment = db.scalar(select(Shipment).where(Shipment.booking_id == member["booking_id"]))
+    cargo = db.get(CargoRequest, member["cargo_id"])
+    original = member["quote"]["snapshot"]
+    headers = {"X-Demo-Role": "warehouse"}
+    path = f"/api/shipments/{shipment.id}/operations"
+    response = client.post(path, headers=headers, json={"actual_weight_tonnes": cargo.weight_tonnes, "actual_volume_m3": cargo.volume_m3, "packing_ready": True, "handover_confirmed": True, "gate_out": True, "loading_sequence": ["cement-01"]})
+    assert response.status_code == 200, response.text
+    assert response.json()["operational_data"]["packing_ready"]
+    assert client.post(path, headers=headers, json={"actual_volume_m3": cargo.volume_m3 + 1}).status_code == 409
+    assert client.post(path, headers=headers, json={"actual_weight_tonnes": cargo.weight_tonnes + 1}).status_code == 409
+    assert client.post(path, headers=headers, json={"crew_assignment": "not warehouse"}).status_code == 403
+    db.expire_all()
+    assert db.get(LineQuote, member["quote"]["id"]).snapshot == original
+    snapshot = client.get("/api/workspace", headers=headers).json()
+    assert snapshot["shipments"][0]["booking"]["voyage_id"] == voyage["id"]
+    assert "total_cost" not in snapshot["shipments"][0]["booking"]
+
+
+def test_team_milestones_are_ordered_and_bound_to_operator_and_terminal(client):
+    voyage = accepted(client)
+    key = voyage["id"]
+    fleet = {"X-Demo-Role": "fleet"}
+    captain = {"X-Demo-Role": "captain"}
+    terminal = {"X-Demo-Role": "terminal"}
+    foreign = {"X-Demo-Role": "captain", "X-Demo-User": "demo-pamba-captain"}
+    assert client.get("/api/lines", headers=foreign).json()["departures"] == []
+    post(client, f"/{key}/milestone", {"status": "SCHEDULED"}, foreign, expected=404)
+    post(client, f"/{key}/milestone", {"status": "IN_TRANSIT"}, captain, expected=409)
+    result = post(client, f"/{key}/milestone", {"status": "SCHEDULED"}, fleet)
+    assert "quote" not in result["members"][0]
+    assert "projected_economics" not in result
+    post(client, f"/{key}/milestone", {"status": "LOADING"}, terminal)
+    post(client, f"/{key}/milestone", {"status": "IN_TRANSIT"}, terminal, expected=403)
+    post(client, f"/{key}/milestone", {"status": "IN_TRANSIT"}, captain)
+    result = post(client, f"/{key}/milestone", {"status": "UNLOADING"}, terminal)
+    assert all(m["status"] == "UNLOADING" for m in result["members"])
+
+
+def test_shared_receipt_cannot_bypass_requested_receiver_verification(client, db):
+    from backend.models import Shipment
+    voyage = accepted(client)
+    key = voyage["id"]
+    for status in ["SCHEDULED", "LOADING", "IN_TRANSIT", "UNLOADING"]:
+        post(client, f"/{key}/milestone", {"status": status}, CONTROL)
+    member = voyage["members"][0]
+    shipment = db.scalar(select(Shipment).where(Shipment.booking_id == member["booking_id"]))
+    receiver = {"X-Demo-Role": "receiver"}
+    challenge = client.post(f"/api/shipments/{shipment.id}/delivery-challenge", headers=receiver, json={})
+    assert challenge.status_code == 200, challenge.text
+    challenge = challenge.json()
+    payload = {"cargo_id": member["cargo_id"], "quantity_tonnes": member["weight_tonnes"], "receiver_name": "Warehouse Receiver"}
+    post(client, f"/{key}/receipt", payload, CONTROL, expected=409)
+    post(client, f"/{key}/receipt", payload, receiver, expected=409)
+    assert db.get(Booking, member["booking_id"]).status == "UNLOADING"
+    verified = client.post(f"/api/delivery-challenges/{challenge['challenge_id']}/verify", headers=receiver, json={"code": challenge["demo_otp"]})
+    assert verified.status_code == 200, verified.text
+    result = post(client, f"/{key}/receipt", payload, receiver)
+    receipt = next(m["receipt"] for m in result["members"] if m["cargo_id"] == member["cargo_id"])
+    assert receipt["recorded_by"] == "demo-receiver"
+    assert receipt["receiver_verified"] is True
+    assert "quote" not in result["members"][0]
+
+
+def test_shared_seller_teams_only_see_own_consignments(client, db):
+    from backend.models import CoordinationGrant
+    db.get(CargoRequest, "pool-cargo").organization_id = "competitor-org"
+    db.add(CoordinationGrant(id="extra-test-grant", owner_org_id="competitor-org", coordinator_org_id="3pl-org"))
+    db.commit()
+    voyage = post(client, "/proposals", {"cargo_ids": ["hero-cargo", "pool-cargo"], "vessel_id": "vembanad"}, CONTROL, expected=201)
+    for role in ["warehouse", "receiver", "dispatch", "finance", "shipper"]:
+        result = client.get("/api/lines", headers={"X-Demo-Role": role}).json()["departures"][0]
+        assert {m["cargo_id"] for m in result["members"]} == {"hero-cargo"}
+        if role not in {"finance", "shipper"}:
+            assert "quote" not in result["members"][0]
+        assert all(j["cargo_id"] in {None, "hero-cargo"} for j in result["jobs"])
+    # A coordinator may propose a mixed-owner bundle; each owner must approve its price.
+    for member in voyage["members"]:
+        headers = {"X-Demo-User": "competitor-user"} if member["cargo_id"] == "pool-cargo" else None
+        post(client, f"/quotes/{member['quote']['id']}/approve", headers=headers)
+    post(client, f"/{voyage['id']}/operator-response", {"version": 1, "accept": True}, OPERATOR)
+    for job in voyage["jobs"]:
+        post(client, f"/jobs/{job['id']}/response", {"status": "ACCEPTED"}, CONTROL)
+    post(client, f"/{voyage['id']}/confirm")
+    # Dispatch of one seller cannot advance another seller's consignment.
+    post(client, f"/{voyage['id']}/milestone", {"status": "SCHEDULED"}, {"X-Demo-Role": "dispatch"}, expected=403)
+    for status in ["SCHEDULED", "LOADING", "IN_TRANSIT", "UNLOADING"]:
+        post(client, f"/{voyage['id']}/milestone", {"status": status}, CONTROL)
+    post(client, f"/{voyage['id']}/receipt", {"cargo_id": "pool-cargo", "quantity_tonnes": 58, "receiver_name": "Other seller"}, {"X-Demo-Role": "receiver"}, expected=404)
+
+
 def test_three_role_locked_bundle_and_receipts(client, db):
     voyage = proposed(client)
     pickup = [j for j in voyage["jobs"] if j["kind"] == "PICKUP_TRUCK"]

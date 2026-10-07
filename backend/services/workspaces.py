@@ -59,6 +59,8 @@ def workspace(db, actor):
         except HTTPException:
             continue
         row = record(booking)
+        member = db.scalar(select(VoyageMember).where(VoyageMember.booking_id == booking.id))
+        row["voyage_id"] = member.voyage_id if member else None
         if role not in COMMERCIAL_ROLES:
             for field in ["total_cost", "cost_breakdown", "risk", "plan_snapshot"]:
                 row.pop(field, None)

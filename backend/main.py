@@ -16,6 +16,7 @@ from backend.api.admin import router as admin_router
 from backend.api.analytics import router as analytics_router
 from backend.api.judge import router as judge_router
 from backend.api.cargo_lines import router as lines_router
+from backend.api.public_context import router as public_context_router
 from data.seed.network import initialize
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -52,6 +53,7 @@ app.include_router(admin_router)
 app.include_router(analytics_router)
 app.include_router(judge_router)
 app.include_router(lines_router)
+app.include_router(public_context_router)
 
 
 @app.middleware("http")
