@@ -168,7 +168,7 @@ export default function TeamDelivery({
                             !Number.isFinite(
                               fields.quantity ?? item.weight_tonnes,
                             ) ||
-                          (fields.quantity ?? item.weight_tonnes) <= 0 ||
+                            (fields.quantity ?? item.weight_tonnes) <= 0 ||
                             (fields.quantity ?? item.weight_tonnes) >
                               item.weight_tonnes
                           }

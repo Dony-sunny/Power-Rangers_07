@@ -138,7 +138,13 @@ export default function FreightPlanning({
         )}
       </Panel>
       <RateBenchmark role={role} cargoId={cargoId} vesselId={vesselId} />
-      <LoadProfileReview key={cargoId} role={role} cargoId={cargoId} act={act} busy={busy} />
+      <LoadProfileReview
+        key={cargoId}
+        role={role}
+        cargoId={cargoId}
+        act={act}
+        busy={busy}
+      />
     </>
   );
 }
